@@ -113,33 +113,20 @@ public class ID3 {
 		}
 
 		// read *.data file
-		// try {
-		// 	BufferedReader reader = new BufferedReader(new FileReader(filename));
-		// 	while ((line = reader.readLine()) != null) {
-		// 		if (matcher.find()) {
-		// 			attributes.add(matcher.group(1).trim());
-		// 			String[] values = matcher.group(2).split(",");;
-		// 			ArrayList<String> list = new ArrayList<String>(values.length);
-		// 			for (String value : values) {
-		// 				list.add(value.trim());
-		// 			}
-		// 			attributeValue.add(list);
-		// 		} else if (line.startsWith("@data")) {
-		// 			while ((line = reader.readLine()) != null) {
-		// 				if (line == "") {
-		// 					continue;
-		// 				}
-		// 				String[] row = line.split(",");
-		// 				data.add(row);
-		// 			}
-		// 		} else {
-		// 			continue;
-		// 		}
-		// 	}
-		// 	reader.close();
-		// } catch (IOException ioe) {
-		// 	ioe.printStackTrace();
-		// }
+		try {
+			BufferedReader reader = new BufferedReader(new FileReader(dataFile));
+			String line = "";
+			int attributeIndex = 0;
+			while ((line = reader.readLine()) != null) {		
+				if (line.endsWith(".")) line = line.substring(0, line.length()-1);
+				String[] row = line.trim().split(",");
+				data.add(row);
+				attributeIndex += 1;
+			}
+			reader.close();
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+		}
 	}
 
 	//打印数据，以确定数据读取是否正确
