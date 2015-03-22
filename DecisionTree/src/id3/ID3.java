@@ -24,12 +24,13 @@ public class ID3 {
 	private enum attributeType {
 		CONTINUOUS, DESCRETE
 	}
-	private ArrayList<String> attributes = new ArrayList<String>(); //存储属性名
-	private ArrayList<attributeType> attributeTypes = new ArrayList<attributeType>(); //存储属性类型 (DESCRETE, CONTINUOUS)
+
+	// private ArrayList<String> classTypes = new ArrayList<String>();  //存储分类属性种类
+	private ArrayList<String> attributes = new ArrayList<String>();  //存储属性名
+	private ArrayList<attributeType> attributeTypes = new ArrayList<attributeType>();  //存储属性类型 (DESCRETE, CONTINUOUS)
 	private ArrayList<ArrayList> attributeValues = new ArrayList<ArrayList>();  //存储每个属性的取值
 	private ArrayList<String[]> data = new ArrayList<String[]>();  //存储String格式数据
-
-	private int classAttributeIdx = -1;    //分类属性在attributes列表中的索引
+	private int classAttributeIdx = -1;    //分类属性在data列表中的索引
 
 	//读取ARFF格式数据文件
 	public void readARFF(String filename) {
@@ -109,6 +110,7 @@ public class ID3 {
 			attributes.add("classLabel");
 			attributeTypes.add(attributeType.DESCRETE);
 			attributeValues.add(classValues);
+			setClassAttribute("classLabel");
 			reader.close();
 		} catch (IOException ioe) {
 			ioe.printStackTrace();
@@ -162,6 +164,11 @@ public class ID3 {
 			System.out.println();
 		}
 		System.out.println();
+		System.out.println("@data size: " + data.size());
+		System.out.println("@attribute size: " + attributes.size());
+		System.out.println("@attributeTypes size: " + attributeTypes.size());
+		System.out.println("@attributeValues size: " + attributeValues.size());
+		System.out.println("@classAttributeIdx: " + classAttributeIdx);
 	}
 
 	//设置分类属性在attributes中的索引
@@ -259,15 +266,29 @@ public class ID3 {
 		return infoD - infoDA;
 	}
 
-	//构建分类决策树
-	public TreeNode buildDecisionTree(LinkedList<Integer> selattr, ArrayList<Integer> subset, String pDecompositionValue) {
+	// 构建分类决策树
+	public void buildDecisionTree() {
+		LinkedList<Integer> selattr = new LinkedList<Integer>();  //初始可用分类属性集为全集
+		for (int i = 0; i < attributes.size(); i++) {
+			if (i != classAttributeIdx) {
+				selattr.add(i);
+			}
+		}
+		ArrayList<Integer> subset = new ArrayList<Integer>(data.size());  //初始数据集
+		for (int i = 0; i < data.size(); i++) {
+			subset.add(i);
+		}
+		treeRoot = buildSubDecisionTree(selattr, subset, "");
+	}
+
+	//构建子集的分类决策树
+	public TreeNode buildSubDecisionTree(LinkedList<Integer> selattr, ArrayList<Integer> subset, String pDecompositionValue) {
 		TreeNode node = new TreeNode();
 		node.pDecompositionValue = pDecompositionValue;
 
 		//如果subset中所有数据都属于同一类
 		if (classPure(subset)) {
 			node.classLabel = data.get(subset.get(0))[classAttributeIdx];
-			//System.out.println(node.pDecompositionValue + "\t" + node.classLabel);
 			return node;
 		} 
 
@@ -279,14 +300,15 @@ public class ID3 {
 
 		//计算各属性的信息增益，并从中选择信息增益最大的属性作为分类属性
 		int maxIndex = -1;
-		double maxEntropy = Double.MIN_VALUE;
+		double maxInfoGain = Double.MIN_VALUE;
 		for (int i = 0; i < selattr.size(); i++) {
-			double entropy = calInformationGain(subset, selattr.get(i));
-			if (entropy > maxEntropy) {
+			double infoGain = calInformationGain(subset, selattr.get(i));
+			if (infoGain > maxInfoGain) {
 				maxIndex = selattr.get(i);
-				maxEntropy = entropy;
+				maxInfoGain = infoGain;
 			}
 		}
+
 		//划分
 		node.decompositionAttribute = attributes.get(maxIndex);
 		selattr.remove(new Integer(maxIndex));
@@ -299,7 +321,7 @@ public class ID3 {
 				}
 			}
 			if (subsubset.size() != 0) {
-				TreeNode child = buildDecisionTree(selattr, subsubset, val);
+				TreeNode child = buildSubDecisionTree(selattr, subsubset, val);
 				child.parent = node;
 				node.children.add(child);
 			} else {
@@ -333,30 +355,20 @@ public class ID3 {
 		System.out.println(node.pDecompositionValue + "\t" + node.decompositionAttribute);
 	}
 
-	// 需要参数：ARFF格式数据文件的文件名
 	public static void main(String[] args) {
 
 		ID3 id3 = new ID3();
-		//读取ARFF格式数据文件
-		id3.readC45("./data/adult.names", "./data/small.data");
-//		id3.readARFF("./data/weather.nominal.arff");
-		id3.printData();
-//		id3.setClassAttribute("play");
-//
-//		// 构建分类决策树
-//		LinkedList<Integer> selattr = new LinkedList<Integer>();//当前节点可用分类属性集
-//		for (int i = 0; i < id3.attributes.size(); i++) {
-//			if (i != id3.classAttributeIdx) {
-//				selattr.add(i);
-//			}
-//		}
-//		ArrayList<Integer> subset = new ArrayList<Integer>(id3.data.size());//当前节点训练数据集
-//		for (int i = 0; i < id3.data.size(); i++) {
-//			subset.add(i);
-//		}
-//		id3.treeRoot = id3.buildDecisionTree(selattr, subset, "");
-//		id3.printTree(id3.treeRoot);
-//		System.out.println();
-//		id3.nprintTree(id3.treeRoot);
+		// 读取ARFF格式数据文件
+		id3.readARFF("./data/weather.nominal.arff");
+		id3.setClassAttribute("play");
+		// 读取C4.5格式数据文件
+//		id3.readC45("./data/adult.names", "./data/small.data");
+//		id3.printData();
+
+		// 构建分类决策树
+		id3.buildDecisionTree();
+		id3.printTree(id3.treeRoot);
+		 // System.out.println();
+		 // id3.nprintTree(id3.treeRoot);
 	}
 }
