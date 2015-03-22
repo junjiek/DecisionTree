@@ -21,10 +21,12 @@ public class ID3 {
 	}
 
 	private TreeNode treeRoot = null;
-
+	private enum attributeType {
+		CONTINUOUS, DESCRETE
+	}
 	private ArrayList<String> attributes = new ArrayList<String>(); //存储属性名
-	private ArrayList<String> attributeType = new ArrayList<String>(); //存储属性类型 (DESCRETE, CONTINUOUS)
-	private ArrayList<ArrayList> attributeValue = new ArrayList<ArrayList>();  //存储每个属性的取值
+	private ArrayList<attributeType> attributeTypes = new ArrayList<attributeType>(); //存储属性类型 (DESCRETE, CONTINUOUS)
+	private ArrayList<ArrayList> attributeValues = new ArrayList<ArrayList>();  //存储每个属性的取值
 	private ArrayList<String[]> data = new ArrayList<String[]>();  //存储String格式数据
 
 	private int classAttributeIdx = -1;    //分类属性在attributes列表中的索引
@@ -44,7 +46,7 @@ public class ID3 {
 					for (String value : values) {
 						list.add(value.trim());
 					}
-					attributeValue.add(list);
+					attributeValues.add(list);
 				} else if (line.startsWith("@data")) {
 					while ((line = reader.readLine()) != null) {
 						if (line == "") {
@@ -91,22 +93,22 @@ public class ID3 {
 				line = line.substring(nameIndex+1, line.length());
 				// System.out.println(line);
 				if(line.toUpperCase().compareTo("CONTINUOUS") == 0) {
-					attributeType.add("CONTINUOUS");
+					attributeTypes.add(attributeType.CONTINUOUS);
 					ArrayList<Double> list = new ArrayList<Double>();
-					attributeValue.add(list);
+					attributeValues.add(list);
 				} else {
-					attributeType.add("DESCRETE");
+					attributeTypes.add(attributeType.DESCRETE);
 					String[] values = line.split(",");
 					ArrayList<String> list = new ArrayList<String>();
 					for (String value : values) {
 						list.add(value.trim());
 					}
-					attributeValue.add(list);
+					attributeValues.add(list);
 				}
 			}
 			attributes.add("classLabel");
-			attributeType.add("DESCRETE");
-			attributeValue.add(classValues);
+			attributeTypes.add(attributeType.DESCRETE);
+			attributeValues.add(classValues);
 			reader.close();
 		} catch (IOException ioe) {
 			ioe.printStackTrace();
@@ -116,12 +118,15 @@ public class ID3 {
 		try {
 			BufferedReader reader = new BufferedReader(new FileReader(dataFile));
 			String line = "";
-			int attributeIndex = 0;
+			ArrayList<Integer> contiAttributesIndex = new ArrayList<Integer>();
+			for (int i = 0; i < attributeTypes.size(); i++) {
+				if(attributeTypes.get(i) == attributeType.CONTINUOUS)
+					contiAttributesIndex.add(i);
+			}
 			while ((line = reader.readLine()) != null) {		
 				if (line.endsWith(".")) line = line.substring(0, line.length()-1);
 				String[] row = line.trim().split(",");
 				data.add(row);
-				attributeIndex += 1;
 			}
 			reader.close();
 		} catch (IOException ioe) {
@@ -137,8 +142,8 @@ public class ID3 {
 		}
 		System.out.println();
 
-		System.out.println("@attributeValue");
-		for (ArrayList list : attributeValue) {
+		System.out.println("@attributeValues");
+		for (ArrayList list : attributeValues) {
 			for (Object value : list) {
 				System.out.print(value.toString() + " ");
 			}
@@ -184,7 +189,7 @@ public class ID3 {
 
 	//统计不同类别计数
 	public int[] classCount(ArrayList<Integer> subset) {
-		ArrayList<String> attrval = attributeValue.get(classAttributeIdx);
+		ArrayList<String> attrval = attributeValues.get(classAttributeIdx);
 		int[] count = new int[attrval.size()];
 		for (int i = 0; i < subset.size(); i++) {
 			String classLabel = data.get(subset.get(i))[classAttributeIdx];
@@ -204,7 +209,7 @@ public class ID3 {
 			}
 		}
 
-		return (String)attributeValue.get(classAttributeIdx).get(maxIdx);
+		return (String)attributeValues.get(classAttributeIdx).get(maxIdx);
 	}
 
 	//计算熵
@@ -231,8 +236,8 @@ public class ID3 {
 		double infoD = calEntropy(classCount(subset));
 
 		//由属性index划分后的熵
-		ArrayList<String> classattrval = attributeValue.get(classAttributeIdx);
-		ArrayList<String> attrval = attributeValue.get(index);
+		ArrayList<String> classattrval = attributeValues.get(classAttributeIdx);
+		ArrayList<String> attrval = attributeValues.get(index);
 		int[][] info = new int[attrval.size()][classattrval.size()];
 		int[] count = new int[attrval.size()];
 		for (int i = 0; i < subset.size(); i++) {
@@ -282,7 +287,7 @@ public class ID3 {
 		//划分
 		node.decompositionAttribute = attributes.get(maxIndex);
 		selattr.remove(new Integer(maxIndex));
-		ArrayList<String> attrval = attributeValue.get(maxIndex);
+		ArrayList<String> attrval = attributeValues.get(maxIndex);
 		for (String val : attrval) {
 			ArrayList<Integer> subsubset = new ArrayList<Integer>();
 			for (int i = 0; i < subset.size(); i++) {
