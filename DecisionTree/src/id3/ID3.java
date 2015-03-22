@@ -126,6 +126,9 @@ public class ID3 {
 			while ((line = reader.readLine()) != null) {		
 				if (line.endsWith(".")) line = line.substring(0, line.length()-1);
 				String[] row = line.trim().split(",");
+				for (Integer index : contiAttributesIndex) {
+					attributeValues.get(index).add(Double.parseDouble(row[index]));
+				}
 				data.add(row);
 			}
 			reader.close();
