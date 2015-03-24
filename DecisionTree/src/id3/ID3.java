@@ -351,41 +351,29 @@ public class ID3 {
 		}
 	}
 
-	// public void printTree(TreeNode node, String tab) {
-	// 	int outputattr = numAttributes - 1;
-	// 	if (node.children == null) {
-	// 		int[] values = getAllValues(node.data, outputattr);
-	// 		if (values.length == 1) {
-	// 			System.out.println(tab + "\t" + attributeNames[outputattr]
-	// 					+ " = \"" + domains[outputattr].elementAt(values[0])
-	// 					+ "\";");
-	// 			return;
-	// 		}
-	// 		System.out.print(tab + "\t" + attributeNames[outputattr] + " = {");
-	// 		for (int i = 0; i < values.length; i++) {
-	// 			System.out.print("\""
-	// 					+ domains[outputattr].elementAt(values[i]) + "\"");
+	public void printTree(TreeNode node, String tab) {
+		if (node.pDecompositionValue != -1) {
+			TreeNode parent = node.parent;
+			System.out.println(attributeValues.get(parent.decompositionAttribute).get(node.pDecompositionValue)
+					+ "\") {");
+		}
+		if (node.children.size() == 0) {
+			System.out.println(tab + "\t" + attributes.get(classAttributeIdx)
+					+ " = \"" + node.classLabel+ "\";");
+			return;
+		}
+		int childsize = node.children.size();
+		for (int i = 0; i < childsize; i++) {
+			System.out.print(tab + "if( "
+					+ attributes.get(node.decompositionAttribute) + " == \"");
+			printTree(node.children.get(i), tab + "\t");
+			if (i != childsize - 1)
+				System.out.print(tab + "} else ");
+			else
+				System.out.println(tab + "}");
+		}
 
-	// 			if (i != values.length - 1)
-	// 				System.out.print(" , ");
-	// 		}
-	// 		System.out.println(" };");
-	// 		return;
-	// 	}
-	// 	int numvalues = node.children.length;
-	// 	for (int i = 0; i < numvalues; i++) {
-	// 		System.out.println(tab + "if( "
-	// 				+ attributeNames[node.decompositionAttribute] + " == \""
-	// 				+ domains[node.decompositionAttribute].elementAt(i)
-	// 				+ "\") {");
-	// 		printTree(node.children[i], tab + "\t");
-	// 		if (i != numvalues - 1)
-	// 			System.out.print(tab + "} else ");
-	// 		else
-	// 			System.out.println(tab + "}");
-	// 	}
-
-	// }
+	}
 
 	//决策树的后根遍历
 	public void nprintTree(TreeNode node) {
@@ -409,7 +397,7 @@ public class ID3 {
 
 		// 构建分类决策树
 		id3.buildDecisionTree();
-		id3.printTree(id3.treeRoot);
+		id3.printTree(id3.treeRoot, "");
 		 // System.out.println();
 		 // id3.nprintTree(id3.treeRoot);
 	}
