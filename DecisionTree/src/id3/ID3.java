@@ -13,9 +13,9 @@ import javax.jws.Oneway;
 public class ID3 {
 
 	class TreeNode {
-		public TreeNode parent = null;			    //父节点
-		public String decompositionAttribute = "";  //当前节点分类属性
-		public String pDecompositionValue = "";     //父节点分类属性值
+		public TreeNode parent = null;			 //父节点
+		public int decompositionAttribute = -1;  //当前节点分类属性
+		public int pDecompositionValue = -1;     //父节点分类属性值
 		public ArrayList<TreeNode> children = new ArrayList<TreeNode>();  //子节点列表
 		public String classLabel = "";      //若当前节点为叶节点，则该节点表示的类别
 	}
@@ -278,11 +278,11 @@ public class ID3 {
 		for (int i = 0; i < data.size(); i++) {
 			subset.add(i);
 		}
-		treeRoot = buildSubDecisionTree(selattr, subset, "");
+		treeRoot = buildSubDecisionTree(selattr, subset, -1);
 	}
 
 	//构建子集的分类决策树
-	public TreeNode buildSubDecisionTree(LinkedList<Integer> selattr, ArrayList<Integer> subset, String pDecompositionValue) {
+	public TreeNode buildSubDecisionTree(LinkedList<Integer> selattr, ArrayList<Integer> subset, int pDecompositionValue) {
 		TreeNode node = new TreeNode();
 		node.pDecompositionValue = pDecompositionValue;
 
@@ -310,18 +310,18 @@ public class ID3 {
 		}
 
 		//划分
-		node.decompositionAttribute = attributes.get(maxIndex);
+		node.decompositionAttribute = maxIndex;
 		selattr.remove(new Integer(maxIndex));
 		ArrayList<String> attrval = attributeValues.get(maxIndex);
-		for (String val : attrval) {
+		for (int i = 0; i < attrval.size(); i++) {
 			ArrayList<Integer> subsubset = new ArrayList<Integer>();
-			for (int i = 0; i < subset.size(); i++) {
-				if (data.get(subset.get(i))[maxIndex].equals(val)) {
-					subsubset.add(subset.get(i));
+			for (int j = 0; j < subset.size(); j++) {
+				if (data.get(subset.get(j))[maxIndex].equals(attrval.get(i))) {
+					subsubset.add(subset.get(j));
 				}
 			}
 			if (subsubset.size() != 0) {
-				TreeNode child = buildSubDecisionTree(selattr, subsubset, val);
+				TreeNode child = buildSubDecisionTree(selattr, subsubset, i);
 				child.parent = node;
 				node.children.add(child);
 			} else {
@@ -337,13 +337,55 @@ public class ID3 {
 
 	//决策树的先根遍历
 	public void printTree(TreeNode node) {
-		System.out.println(node.pDecompositionValue + "\t" + node.decompositionAttribute);
+		String pDepositionValue = "", decompositionAttribute = "";
+		if (node.pDecompositionValue != -1)
+			pDepositionValue = attributes.get(node.pDecompositionValue);
+		if (node.decompositionAttribute != -1)
+			decompositionAttribute = attributes.get(node.decompositionAttribute);
+
+		System.out.println(pDepositionValue + "\t" + decompositionAttribute);
 		if (node.children.size() != 0) {
 			for (TreeNode tnode : node.children) {
 				printTree(tnode);
 			}
 		}
 	}
+
+	// public void printTree(TreeNode node, String tab) {
+	// 	int outputattr = numAttributes - 1;
+	// 	if (node.children == null) {
+	// 		int[] values = getAllValues(node.data, outputattr);
+	// 		if (values.length == 1) {
+	// 			System.out.println(tab + "\t" + attributeNames[outputattr]
+	// 					+ " = \"" + domains[outputattr].elementAt(values[0])
+	// 					+ "\";");
+	// 			return;
+	// 		}
+	// 		System.out.print(tab + "\t" + attributeNames[outputattr] + " = {");
+	// 		for (int i = 0; i < values.length; i++) {
+	// 			System.out.print("\""
+	// 					+ domains[outputattr].elementAt(values[i]) + "\"");
+
+	// 			if (i != values.length - 1)
+	// 				System.out.print(" , ");
+	// 		}
+	// 		System.out.println(" };");
+	// 		return;
+	// 	}
+	// 	int numvalues = node.children.length;
+	// 	for (int i = 0; i < numvalues; i++) {
+	// 		System.out.println(tab + "if( "
+	// 				+ attributeNames[node.decompositionAttribute] + " == \""
+	// 				+ domains[node.decompositionAttribute].elementAt(i)
+	// 				+ "\") {");
+	// 		printTree(node.children[i], tab + "\t");
+	// 		if (i != numvalues - 1)
+	// 			System.out.print(tab + "} else ");
+	// 		else
+	// 			System.out.println(tab + "}");
+	// 	}
+
+	// }
 
 	//决策树的后根遍历
 	public void nprintTree(TreeNode node) {
