@@ -389,11 +389,11 @@ public class ID3 {
 
 		ID3 id3 = new ID3();
 		// 读取ARFF格式数据文件
-		id3.readARFF("./data/weather.nominal.arff");
-		id3.setClassAttribute("play");
+		// id3.readARFF("./data/weather.nominal.arff");
+		// id3.setClassAttribute("play");
 		// 读取C4.5格式数据文件
-//		id3.readC45("./data/adult.names", "./data/small.data");
-//		id3.printData();
+		id3.readC45("./data/weather.names", "./data/weather.data");
+		// id3.printData();
 
 		// 构建分类决策树
 		id3.buildDecisionTree();
