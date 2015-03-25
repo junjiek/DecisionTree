@@ -46,39 +46,6 @@ public class ID3 {
 	private ArrayList<String[]> testdata = new ArrayList<String[]>();
 	private int classAttributeIdx = -1;    //分类属性在data列表中的索引
 	private double[] newSplitPoint;
-	//读取ARFF格式数据文件
-	public void readARFF(String filename) {
-		try {
-			BufferedReader reader = new BufferedReader(new FileReader(filename));
-			Pattern pattern = Pattern.compile("@attribute(.*)[{](.*?)[}]");
-			String line = "";
-			while ((line = reader.readLine()) != null) {
-				Matcher matcher = pattern.matcher(line);
-				if (matcher.find()) {
-					attributes.add(matcher.group(1).trim());
-					String[] values = matcher.group(2).split(",");;
-					ArrayList<String> list = new ArrayList<String>(values.length);
-					for (String value : values) {
-						list.add(value.trim());
-					}
-					attributeValues.add(list);
-				} else if (line.startsWith("@data")) {
-					while ((line = reader.readLine()) != null) {
-						if (line == "") {
-							continue;
-						}
-						String[] row = line.split(",");
-						traindata.add(row);
-					}
-				} else {
-					continue;
-				}
-			}
-			reader.close();
-		} catch (IOException ioe) {
-			ioe.printStackTrace();
-		}
-	}
 
 	public void readC45(String namesFile, String dataFile, String testFile) {
 		// read *.names file
@@ -590,42 +557,10 @@ public class ID3 {
 		}
 
 	}
-	
-	public void printTree(TreeNode node, String tab) {
-		if (node.children.size() == 0) {
-			System.out.println(tab + attributes.get(classAttributeIdx)
-					+ " = \"" + node.classLabel+ "\";");
-			return;
-		}
-		int childsize = node.children.size();
-		for (int i = 0; i < childsize; i++) {
-			TreeNode child = node.children.get(i);
-			String classifier = "";
-			switch (child.type) {
-				case EQ: classifier = " == "; break;
-				case GE: classifier = " >= "; break;
-				case LT: classifier = " < "; break;
-			}
-			System.out.println(tab + "if( "
-					+ attributes.get(node.decomposeAttribute) + classifier
-					+ "\"" + child.pDecomposeValue + "\") {");
-			printTree(child, tab + "\t");
-			if (i != childsize - 1) {
-				System.out.print(tab + "} else ");
-			}
-			else {
-				System.out.println(tab + "}");
-			}
-		}
-
-	}
 
 	public static void main(String[] args) {
 		long startTime = System.currentTimeMillis();
 		ID3 id3 = new ID3();
-		// 读取ARFF格式数据文件
-		// id3.readARFF("./data/weather.nominal.arff");
-		// id3.setClassAttribute("play");
 		// 读取C4.5格式数据文件
 		id3.readC45("./data/adult.names", "./data/adult.data", "./data/adult.test");
 		// id3.printData();
