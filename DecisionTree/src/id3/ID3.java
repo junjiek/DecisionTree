@@ -397,7 +397,7 @@ public class ID3 {
 		//计算各属性的信息增益，并从中选择信息增益最大的属性作为分类属性
 		System.out.println("Calculating max infoGain...");
 		int maxIndex = -1;
-		double maxInfoGain = Double.MIN_VALUE;
+		double maxInfoGain = -1.0;
 		for (int i : selattr) {
 			double infoGain;
 			System.out.println("----- " + attributes.get(i) + " ------");
