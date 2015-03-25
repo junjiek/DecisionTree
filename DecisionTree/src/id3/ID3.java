@@ -14,6 +14,7 @@ import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
 import javax.jws.Oneway;
+import javax.naming.ldap.Rdn;
 
 public class ID3 {
 	
@@ -247,13 +248,13 @@ public class ID3 {
 		return entropy;
 	}
 
-	public int compareTo(Object attributeValue, int attributeIndex, String[] oneRecord) {
+	public int compareTo(String attributeValue, int attributeIndex, String[] oneRecord) {
 		if (oneRecord[attributeIndex].compareTo("?") == 0) return UNKNOWN;
 		if (attributeTypes.get(attributeIndex) == AttributeType.DISCRETE) {
 			return oneRecord[attributeIndex].compareTo((String)attributeValue);
 		}
 		Double recordValue = Double.parseDouble(oneRecord[attributeIndex]);
-		return recordValue.compareTo((Double)attributeValue);
+		return recordValue.compareTo(Double.parseDouble(attributeValue));
 	}
 
 	private class Pair implements Comparable{
@@ -390,25 +391,61 @@ public class ID3 {
 		treeRoot.pDecomposeValue = "";
 	}
 
-	public String classifyOneRecord(String[] record) {
+	public String classifyOneRecord(String[] record, BufferedWriter out) throws IOException{
+		String debug = "---------------------------\n";
+		for (String str : record)
+			debug += (str + ", ");
+		debug += "\n";
 		TreeNode node = treeRoot;
 		while (node.classLabel.length() == 0) {
 			int attr = node.decomposeAttribute;
-			Object attributeValue;
-			if (attributeTypes.get(attr) == AttributeType.CONTINUOUS) {
+			debug += attributes.get(attr);
+			// TODO: add "MajorityLabel" for TreeNode
+			if (record[attr].compareTo("?") == 0) {
+				int rdm = (new Random().nextInt()) % node.children.size();
+				if (rdm < 0) rdm += node.children.size();
+				debug += ( "--( ? )-->");
+				node = node.children.get(rdm);
+				continue;
 			}
-			for (TreeNode child : node.children) {
+			TreeNode child;
+			for (int i = 0; i < node.children.size(); i++) {
+				child = node.children.get(i);
+				int cmp = compareTo(child.pDecomposeValue, attr, record);
+				boolean match1 = child.type == CompareType.EQ && cmp == 0;
+				boolean match2 = child.type == CompareType.GE && cmp >= 0;
+				boolean match3 = child.type == CompareType.LT && cmp < 0;
+				String sym = "";
+				if (match2) {
+					sym = record[attr] + " >= ";
+				}
+				if (match3) {
+					sym = record[attr] + " < ";
+				}
+				if (match1 || match2 || match3) {
+					debug += ( "--(" + sym + child.pDecomposeValue + ")-->");
+					node = child;
+					break;
+				}
 			}
 		}
+		debug += " " + node.classLabel;
+		out.write(debug);
+		out.newLine();
 		return node.classLabel;
 	}
 
-	public void test() {
+	public double test(BufferedWriter out) throws IOException{
+		int correct = 0;
 		for (int i : testSet) {
-			
-			String [] testData =  data.get(i);
-			
+			String predict = classifyOneRecord(data.get(i), out);
+			String real = data.get(i)[classAttributeIdx];
+			out.write("p: " + predict + ", r: " + real);
+			out.newLine();
+			if (predict.compareTo(real) == 0) 
+				correct ++;
 		}
+		return correct * 1.0 / testSet.size();
 	}
 
 	//构建子集的分类决策树
@@ -455,7 +492,7 @@ public class ID3 {
 			HashSet<Integer> lowerSubset = new HashSet<Integer>();
 			HashSet<Integer> upperSubset = new HashSet<Integer>();
 			for (int j : subset) {
-				int cmp = compareTo(splitPoint, maxIndex, data.get(j));
+				int cmp = compareTo(splitPoint + "", maxIndex, data.get(j));
 				if (cmp == UNKNOWN) continue;
 				if (cmp >= 0)
 					upperSubset.add(j);
@@ -495,7 +532,7 @@ public class ID3 {
 						subsubset.add(j);
 					}
 				}
-				System.out.println(attrval + ": " + subsubset.size());
+				// System.out.println(attrval + ": " + subsubset.size());
 				TreeNode child;
 				if (subsubset.size() != 0)
 					child = buildDecisionTree(new HashSet<Integer>(selattr), subsubset);
@@ -535,7 +572,7 @@ public class ID3 {
 					+ attributes.get(node.decomposeAttribute) + classifier
 					+ "\"" + child.pDecomposeValue + "\") {");
 			out.newLine();
-			printTree(child, tab + "\t", out);
+			printTreeToFile(child, tab + "\t", out);
 			if (i != childsize - 1) {
 				out.write(tab + "} else ");
 			}
@@ -583,16 +620,16 @@ public class ID3 {
 		// id3.readARFF("./data/weather.nominal.arff");
 		// id3.setClassAttribute("play");
 		// 读取C4.5格式数据文件
-		id3.readC45("./data/adult.names", "./data/small.data");
+		id3.readC45("./data/adult.names", "./data/adult.data");
 		// id3.printData();
 		// 构建分类决策树
 		id3.generateTrainTestSet(1);
 		id3.train();
 
 		try {
-			BufferedWriter myout = new BufferedWriter(new FileWriter(new File("./tree1.txt")));       
-			id3.printTreeToFile(id3.treeRoot, "", myout); 
-			myout.close();
+			BufferedWriter treeout = new BufferedWriter(new FileWriter(new File("./tree")));       
+			id3.printTreeToFile(id3.treeRoot, "", treeout); 
+			treeout.close();
 		} catch(Exception e) {
 			System.out.println(e);
 		}
@@ -601,6 +638,15 @@ public class ID3 {
 		System.out.println("========= Tree built, size:" + id3.treeSize +
 							" , running time: " + (endTime - startTime)/1000.0
 							 + "s =========");
+		System.out.println("testing...");
 
+		try {
+			BufferedWriter testout = new BufferedWriter(new FileWriter(new File("./test")));       
+			double accuracy = id3.test(testout);
+			System.out.println("accuracy : " + accuracy);
+			testout.close();
+		} catch(Exception e) {
+			System.out.println(e);
+		}
 	}
 }
