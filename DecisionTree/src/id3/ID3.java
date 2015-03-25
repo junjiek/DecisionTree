@@ -29,7 +29,7 @@ public class ID3 {
 		
 		public TreeNode parent = null;			 //父节点
 		public int decomposeAttribute = -1;  //当前节点分类属性
-		public double pDecomposeValue = -1;  //父节点分类属性值
+		public String pDecomposeValue = "";  //父节点分类属性值
 		public CompareType type = CompareType.EQ;
 		public ArrayList<TreeNode> children = new ArrayList<TreeNode>();  //子节点列表
 		public String classLabel = "";      //若当前节点为叶节点，则该节点表示的类别
@@ -366,15 +366,14 @@ public class ID3 {
 		}
 		Random rdm = new Random(System.currentTimeMillis());
 		for (int i = 0; i < trainSetSize; i++) {
-			Integer testData = rdm.nextInt() % data.size();
-			if (testData < 0) testData += data.size();
-			while (trainSet.contains(testData)) {
-				testData = rdm.nextInt() % data.size();
-				if (testData < 0) testData += data.size();
+			Integer trainData = rdm.nextInt() % data.size();
+			if (trainData < 0) trainData += data.size();
+			while (trainSet.contains(trainData)) {
+				trainData = rdm.nextInt() % data.size();
+				if (trainData < 0) trainData += data.size();
 			}
-			trainSet.add(testData);
-			testSet.remove(testData);
-			
+			trainSet.add(trainData);
+			testSet.remove(trainData);
 		}
 		return;
 	}
@@ -388,15 +387,27 @@ public class ID3 {
 		}
 		treeSize = 0;
 		treeRoot = buildDecisionTree(selattr, trainSet);
-		treeRoot.pDecomposeValue = -1.0;
+		treeRoot.pDecomposeValue = "";
+	}
+
+	public String classifyOneRecord(String[] record) {
+		TreeNode node = treeRoot;
+		while (node.classLabel.length() == 0) {
+			int attr = node.decomposeAttribute;
+			Object attributeValue;
+			if (attributeTypes.get(attr) == AttributeType.CONTINUOUS) {
+			}
+			for (TreeNode child : node.children) {
+			}
+		}
+		return node.classLabel;
 	}
 
 	public void test() {
 		for (int i : testSet) {
-			TreeNode visit = treeRoot;
-			while (visit.classLabel.length() == 0) {
-//				int decomposeAttribute = 
-			}
+			
+			String [] testData =  data.get(i);
+			
 		}
 	}
 
@@ -444,7 +455,9 @@ public class ID3 {
 			HashSet<Integer> lowerSubset = new HashSet<Integer>();
 			HashSet<Integer> upperSubset = new HashSet<Integer>();
 			for (int j : subset) {
-				if (compareTo(splitPoint, maxIndex, data.get(j)) >= 0)
+				int cmp = compareTo(splitPoint, maxIndex, data.get(j));
+				if (cmp == UNKNOWN) continue;
+				if (cmp >= 0)
 					upperSubset.add(j);
 				else
 					lowerSubset.add(j);
@@ -457,7 +470,7 @@ public class ID3 {
 				lowerChild = new TreeNode();
 				lowerChild.classLabel = MajorityVoting(subset);
 			}
-			lowerChild.pDecomposeValue = splitPoint;
+			lowerChild.pDecomposeValue = splitPoint + "";
 			lowerChild.type = CompareType.LT;
 			lowerChild.parent = node;
 			node.children.add(lowerChild);
@@ -469,21 +482,20 @@ public class ID3 {
 				upperChild = new TreeNode();
 				upperChild.classLabel = MajorityVoting(subset);
 			}
-			upperChild.pDecomposeValue = splitPoint;
+			upperChild.pDecomposeValue = splitPoint + "";
 			upperChild.type = CompareType.GE;
 			upperChild.parent = node;
 			node.children.add(upperChild);
 		} else {
-			ArrayList<String> attrval = attributeValues.get(maxIndex);
-			for (int i = 0; i < attrval.size(); i++) {
+			for (String attrval : attributeValues.get(maxIndex)) {
 				treeSize ++;
 				HashSet<Integer> subsubset = new HashSet<Integer>();
 				for (int j : subset) {
-					if (compareTo(attrval.get(i), maxIndex, data.get(j)) == 0) {
+					if (compareTo(attrval, maxIndex, data.get(j)) == 0) {
 						subsubset.add(j);
 					}
 				}
-				System.out.println(attrval.get(i) + ": " + subsubset.size());
+				System.out.println(attrval + ": " + subsubset.size());
 				TreeNode child;
 				if (subsubset.size() != 0)
 					child = buildDecisionTree(new HashSet<Integer>(selattr), subsubset);
@@ -491,7 +503,7 @@ public class ID3 {
 					child = new TreeNode();
 					child.classLabel = MajorityVoting(subset);
 				}
-				child.pDecomposeValue = i;
+				child.pDecomposeValue = attrval;
 				child.type = CompareType.EQ;
 				child.parent = node;
 				node.children.add(child);
@@ -503,9 +515,9 @@ public class ID3 {
 	}
 
 
-	public void printTree(TreeNode node, String tab, BufferedWriter out) throws IOException{
+	public void printTreeToFile(TreeNode node, String tab, BufferedWriter out) throws IOException{
 		if (node.children.size() == 0) {
-			out.write(tab + "\t" + attributes.get(classAttributeIdx)
+			out.write(tab + attributes.get(classAttributeIdx)
 					+ " = \"" + node.classLabel+ "\";");
 			out.newLine();
 			return;
@@ -519,25 +531,46 @@ public class ID3 {
 				case GE: classifier = " >= "; break;
 				case LT: classifier = " < "; break;
 			}
-			String pDecomposeValue;
-			if (attributeTypes.get(node.decomposeAttribute) == AttributeType.CONTINUOUS)
-				pDecomposeValue = child.pDecomposeValue + "";
-			else {
-				ArrayList<String> value = attributeValues.get(node.decomposeAttribute);
-				pDecomposeValue = value.get((int)child.pDecomposeValue);
-			}
 			out.write(tab + "if( "
 					+ attributes.get(node.decomposeAttribute) + classifier
-					+ "\"" + pDecomposeValue + "\") {");
+					+ "\"" + child.pDecomposeValue + "\") {");
 			out.newLine();
 			printTree(child, tab + "\t", out);
 			if (i != childsize - 1) {
 				out.write(tab + "} else ");
-				out.newLine();
 			}
 			else {
 				out.write(tab + "}");
 				out.newLine();
+			}
+		}
+
+	}
+	
+	public void printTree(TreeNode node, String tab) {
+		if (node.children.size() == 0) {
+			System.out.println(tab + attributes.get(classAttributeIdx)
+					+ " = \"" + node.classLabel+ "\";");
+			return;
+		}
+		int childsize = node.children.size();
+		for (int i = 0; i < childsize; i++) {
+			TreeNode child = node.children.get(i);
+			String classifier = "";
+			switch (child.type) {
+				case EQ: classifier = " == "; break;
+				case GE: classifier = " >= "; break;
+				case LT: classifier = " < "; break;
+			}
+			System.out.println(tab + "if( "
+					+ attributes.get(node.decomposeAttribute) + classifier
+					+ "\"" + child.pDecomposeValue + "\") {");
+			printTree(child, tab + "\t");
+			if (i != childsize - 1) {
+				System.out.print(tab + "} else ");
+			}
+			else {
+				System.out.println(tab + "}");
 			}
 		}
 
@@ -550,15 +583,16 @@ public class ID3 {
 		// id3.readARFF("./data/weather.nominal.arff");
 		// id3.setClassAttribute("play");
 		// 读取C4.5格式数据文件
-		id3.readC45("./data/adult.names", "./data/adult.data");
+		id3.readC45("./data/adult.names", "./data/small.data");
 		// id3.printData();
 		// 构建分类决策树
 		id3.generateTrainTestSet(1);
 		id3.train();
 
 		try {
-			BufferedWriter myout = new BufferedWriter(new FileWriter(new File("./tree")));       
-			id3.printTree(id3.treeRoot, "", myout); 
+			BufferedWriter myout = new BufferedWriter(new FileWriter(new File("./tree1.txt")));       
+			id3.printTreeToFile(id3.treeRoot, "", myout); 
+			myout.close();
 		} catch(Exception e) {
 			System.out.println(e);
 		}
