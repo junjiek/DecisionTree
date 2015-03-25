@@ -38,12 +38,12 @@ public class ID3 {
 	private int treeSize = 0;
 	private TreeNode treeRoot = null;
 	private HashSet<Integer> trainSet;
-	private HashSet<Integer> testSet;
 	// private ArrayList<String> classTypes = new ArrayList<String>();  //存储分类属性种类
 	private ArrayList<String> attributes = new ArrayList<String>();  //存储属性名
 	private ArrayList<AttributeType> attributeTypes = new ArrayList<AttributeType>();  //存储属性类型 (DISCRETE, CONTINUOUS)
 	private ArrayList<ArrayList<String>> attributeValues = new ArrayList<ArrayList<String>>();  //存储每个属性的取值
-	private ArrayList<String[]> data = new ArrayList<String[]>();  //存储String格式数据
+	private ArrayList<String[]> traindata = new ArrayList<String[]>();  //存储String格式数据
+	private ArrayList<String[]> testdata = new ArrayList<String[]>();
 	private int classAttributeIdx = -1;    //分类属性在data列表中的索引
 	private double[] newSplitPoint;
 	//读取ARFF格式数据文件
@@ -68,7 +68,7 @@ public class ID3 {
 							continue;
 						}
 						String[] row = line.split(",");
-						data.add(row);
+						traindata.add(row);
 					}
 				} else {
 					continue;
@@ -80,7 +80,7 @@ public class ID3 {
 		}
 	}
 
-	public void readC45(String namesFile, String dataFile) {
+	public void readC45(String namesFile, String dataFile, String testFile) {
 		// read *.names file
 		try {
 			BufferedReader reader = new BufferedReader(new FileReader(namesFile));
@@ -139,7 +139,22 @@ public class ID3 {
 			while ((line = reader.readLine()) != null) {		
 				if (line.endsWith(".")) line = line.substring(0, line.length()-1);
 				String[] row = line.trim().split(",");
-				data.add(row);
+				traindata.add(row);
+			}
+			reader.close();
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+		}
+
+		// read *.test file
+		try {
+			BufferedReader reader = new BufferedReader(new FileReader(testFile));
+			String line = "";
+			
+			while ((line = reader.readLine()) != null) {		
+				if (line.endsWith(".")) line = line.substring(0, line.length()-1);
+				String[] row = line.trim().split(",");
+				testdata.add(row);
 			}
 			reader.close();
 		} catch (IOException ioe) {
@@ -165,14 +180,14 @@ public class ID3 {
 		System.out.println();
 
 		System.out.println("@data");
-		for (String[] array : data) {
+		for (String[] array : traindata) {
 			for (String d : array) {
 				System.out.print(d + " ");
 			}
 			System.out.println();
 		}
 		System.out.println();
-		System.out.println("@data size: " + data.size());
+		System.out.println("@data size: " + traindata.size());
 		System.out.println("@attribute size: " + attributes.size());
 		System.out.println("@attributeTypes size: " + attributeTypes.size());
 		System.out.println("@attributeValues size: " + attributeValues.size());
@@ -195,9 +210,9 @@ public class ID3 {
 
 	//判断subset中数据是否属于同一类
 	public boolean classPure(HashSet<Integer> subset) {
-		String classLabel = data.get(subset.iterator().next())[classAttributeIdx];
+		String classLabel = traindata.get(subset.iterator().next())[classAttributeIdx];
 		for (int i : subset) {
-			String nextClassLabel = data.get(i)[classAttributeIdx];
+			String nextClassLabel = traindata.get(i)[classAttributeIdx];
 			if (!nextClassLabel.equals(classLabel)) {
 				return false;
 			}
@@ -210,7 +225,7 @@ public class ID3 {
 		ArrayList<String> attrval = attributeValues.get(classAttributeIdx);
 		int[] count = new int[attrval.size()];
 		for (int i : subset) {
-			String classLabel = data.get(i)[classAttributeIdx];
+			String classLabel = traindata.get(i)[classAttributeIdx];
 			count[attrval.indexOf(classLabel)]++;
 		}
 		return count;
@@ -286,13 +301,13 @@ public class ID3 {
 		Iterator<Pair> iter = lowerSet.iterator();
 		while(iter.hasNext()) {
 			int instance = iter.next().index;
-			String classAttr = data.get(instance)[classAttributeIdx];
+			String classAttr = traindata.get(instance)[classAttributeIdx];
 			info[0][classattrval.indexOf(classAttr)]++;	
 		}
 		iter = upperSet.iterator();
 		while(iter.hasNext()) {
 			int instance = iter.next().index;
-			String classAttr = data.get(instance)[classAttributeIdx];
+			String classAttr = traindata.get(instance)[classAttributeIdx];
 			info[1][classattrval.indexOf(classAttr)]++;	
 		}
 		return (calEntropy(info[0])*lowerSet.size()+
@@ -306,7 +321,7 @@ public class ID3 {
 		TreeSet<Pair> values = new TreeSet<Pair>();
 		TreeSet<Double> diffValues = new TreeSet<Double>(); 
 		for (int i : subset) {
-			String dataStr = data.get(i)[index];
+			String dataStr = traindata.get(i)[index];
 			if (dataStr.compareTo("?") == 0) continue;
 			Double tmp = Double.parseDouble(dataStr);
 			values.add(new Pair(tmp, i));
@@ -344,9 +359,9 @@ public class ID3 {
 		int[] count = new int[attrval.size()];
 		for (int i : subset) {
 			int attrvalIndex;
-			if (data.get(i)[index].compareTo("?") == 0) continue;
-			attrvalIndex = attrval.indexOf(data.get(i)[index]);
-			int classattrvalIndex = classattrval.indexOf(data.get(i)[classAttributeIdx]);
+			if (traindata.get(i)[index].compareTo("?") == 0) continue;
+			attrvalIndex = attrval.indexOf(traindata.get(i)[index]);
+			int classattrvalIndex = classattrval.indexOf(traindata.get(i)[classAttributeIdx]);
 			info[attrvalIndex][classattrvalIndex]++;
 			count[attrvalIndex]++;
 		}
@@ -359,22 +374,17 @@ public class ID3 {
 	}
 
 	public void generateTrainTestSet(double trainRate) {
-		int trainSetSize = (int)(data.size()*trainRate);
+		int trainSetSize = (int)(traindata.size()*trainRate);
 		trainSet = new HashSet<Integer>(trainSetSize);  //初始数据集
-		testSet = new HashSet<Integer>(data.size());
-		for (int i = 0; i < data.size(); i++) {
-			testSet.add(i);
-		}
 		Random rdm = new Random(System.currentTimeMillis());
 		for (int i = 0; i < trainSetSize; i++) {
-			Integer trainData = rdm.nextInt() % data.size();
-			if (trainData < 0) trainData += data.size();
+			Integer trainData = rdm.nextInt() % traindata.size();
+			if (trainData < 0) trainData += traindata.size();
 			while (trainSet.contains(trainData)) {
-				trainData = rdm.nextInt() % data.size();
-				if (trainData < 0) trainData += data.size();
+				trainData = rdm.nextInt() % traindata.size();
+				if (trainData < 0) trainData += traindata.size();
 			}
 			trainSet.add(trainData);
-			testSet.remove(trainData);
 		}
 		return;
 	}
@@ -437,15 +447,15 @@ public class ID3 {
 
 	public double test(BufferedWriter out) throws IOException{
 		int correct = 0;
-		for (int i : testSet) {
-			String predict = classifyOneRecord(data.get(i), out);
-			String real = data.get(i)[classAttributeIdx];
+		for (String[] test : testdata) {
+			String predict = classifyOneRecord(test, out);
+			String real = test[classAttributeIdx];
 			out.write("p: " + predict + ", r: " + real);
 			out.newLine();
 			if (predict.compareTo(real) == 0) 
 				correct ++;
 		}
-		return correct * 1.0 / testSet.size();
+		return correct * 1.0 / testdata.size();
 	}
 
 	//构建子集的分类决策树
@@ -453,7 +463,7 @@ public class ID3 {
 		TreeNode node = new TreeNode();
 		//如果subset中所有数据都属于同一类
 		if (classPure(subset)) {
-			node.classLabel = data.get(subset.iterator().next())[classAttributeIdx];
+			node.classLabel = traindata.get(subset.iterator().next())[classAttributeIdx];
 			return node;
 		} 
 
@@ -492,7 +502,7 @@ public class ID3 {
 			HashSet<Integer> lowerSubset = new HashSet<Integer>();
 			HashSet<Integer> upperSubset = new HashSet<Integer>();
 			for (int j : subset) {
-				int cmp = compareTo(splitPoint + "", maxIndex, data.get(j));
+				int cmp = compareTo(splitPoint + "", maxIndex, traindata.get(j));
 				if (cmp == UNKNOWN) continue;
 				if (cmp >= 0)
 					upperSubset.add(j);
@@ -528,7 +538,7 @@ public class ID3 {
 				treeSize ++;
 				HashSet<Integer> subsubset = new HashSet<Integer>();
 				for (int j : subset) {
-					if (compareTo(attrval, maxIndex, data.get(j)) == 0) {
+					if (compareTo(attrval, maxIndex, traindata.get(j)) == 0) {
 						subsubset.add(j);
 					}
 				}
@@ -620,10 +630,10 @@ public class ID3 {
 		// id3.readARFF("./data/weather.nominal.arff");
 		// id3.setClassAttribute("play");
 		// 读取C4.5格式数据文件
-		id3.readC45("./data/adult.names", "./data/adult.data");
+		id3.readC45("./data/adult.names", "./data/adult.data", "./data/adult.test");
 		// id3.printData();
 		// 构建分类决策树
-		id3.generateTrainTestSet(1);
+		id3.generateTrainTestSet(0.5);
 		id3.train();
 
 		try {
