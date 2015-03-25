@@ -544,7 +544,7 @@ public class ID3 {
 	}
 
 	public static void main(String[] args) {
-
+		long startTime = System.currentTimeMillis();
 		ID3 id3 = new ID3();
 		// 读取ARFF格式数据文件
 		// id3.readARFF("./data/weather.nominal.arff");
@@ -556,7 +556,7 @@ public class ID3 {
 		// 构建分类决策树
 		id3.buildDecisionTree();
 		id3.printTree(id3.treeRoot, "");
-		 // System.out.println();
-		 // id3.nprintTree(id3.treeRoot);
+		long endTime = System.currentTimeMillis();
+		System.out.println("Running time: " + (endTime - startTime)/1000.0 + "s");
 	}
 }
