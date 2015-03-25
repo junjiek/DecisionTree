@@ -34,7 +34,7 @@ public class ID3 {
 		public ArrayList<TreeNode> children = new ArrayList<TreeNode>();  //子节点列表
 		public String classLabel = "";      //若当前节点为叶节点，则该节点表示的类别
 	}
-
+	private int treeSize = 0;
 	private TreeNode treeRoot = null;
 	private HashSet<Integer> trainSet;
 	private HashSet<Integer> testSet;
@@ -194,7 +194,6 @@ public class ID3 {
 
 	//判断subset中数据是否属于同一类
 	public boolean classPure(HashSet<Integer> subset) {
-		System.out.println("classPure : " + subset);
 		String classLabel = data.get(subset.iterator().next())[classAttributeIdx];
 		for (int i : subset) {
 			String nextClassLabel = data.get(i)[classAttributeIdx];
@@ -387,8 +386,18 @@ public class ID3 {
 				selattr.add(i);
 			}
 		}
+		treeSize = 0;
 		treeRoot = buildDecisionTree(selattr, trainSet);
 		treeRoot.pDecompositionValue = -1.0;
+	}
+
+	public void test() {
+		for (int i : testSet) {
+			TreeNode visit = treeRoot;
+			while (visit.classLabel.length() == 0) {
+//				int decomposeAttribute = 
+			}
+		}
 	}
 
 	//构建子集的分类决策树
@@ -430,6 +439,7 @@ public class ID3 {
 		node.decompositionAttribute = maxIndex;
 		selattr.remove(new Integer(maxIndex));
 		if (attributeTypes.get(maxIndex) == AttributeType.CONTINUOUS) {
+			treeSize += 2;
 			double splitPoint = newSplitPoint[maxIndex];
 			HashSet<Integer> lowerSubset = new HashSet<Integer>();
 			HashSet<Integer> upperSubset = new HashSet<Integer>();
@@ -466,6 +476,7 @@ public class ID3 {
 		} else {
 			ArrayList<String> attrval = attributeValues.get(maxIndex);
 			for (int i = 0; i < attrval.size(); i++) {
+				treeSize ++;
 				HashSet<Integer> subsubset = new HashSet<Integer>();
 				for (int j : subset) {
 					if (compareTo(attrval.get(i), maxIndex, data.get(j)) == 0) {
@@ -546,15 +557,16 @@ public class ID3 {
 		id3.train();
 
 		try {
-			BufferedWriter myout = new BufferedWriter(new FileWriter(new File("./tree.txt")));       
+			BufferedWriter myout = new BufferedWriter(new FileWriter(new File("./tree")));       
 			id3.printTree(id3.treeRoot, "", myout); 
 		} catch(Exception e) {
 			System.out.println(e);
 		}
 		
 		long endTime = System.currentTimeMillis();
-		System.out.println("========= Tree built, running time: "
-						    + (endTime - startTime)/1000.0 + "s =========");
+		System.out.println("========= Tree built, size:" + id3.treeSize +
+							" , running time: " + (endTime - startTime)/1000.0
+							 + "s =========");
 
 	}
 }
