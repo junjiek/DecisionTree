@@ -4,34 +4,46 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.SortedSet;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
 import javax.jws.Oneway;
 
 public class ID3 {
-
+	
+	private enum AttributeType {
+		CONTINUOUS, DISCRETE
+	}
+	private static final int UNKNOWN = Integer.MAX_VALUE;
+	private enum CompareType {
+		EQ, LT, GE
+	}
+	
 	class TreeNode {
+		
 		public TreeNode parent = null;			 //父节点
 		public int decompositionAttribute = -1;  //当前节点分类属性
-		public int pDecompositionValue = -1;     //父节点分类属性值
+		public double pDecompositionValue = -1;  //父节点分类属性值
+		public CompareType type = CompareType.EQ;
 		public ArrayList<TreeNode> children = new ArrayList<TreeNode>();  //子节点列表
 		public String classLabel = "";      //若当前节点为叶节点，则该节点表示的类别
 	}
 
 	private TreeNode treeRoot = null;
-	private enum attributeType {
-		CONTINUOUS, DESCRETE
-	}
 
 	// private ArrayList<String> classTypes = new ArrayList<String>();  //存储分类属性种类
 	private ArrayList<String> attributes = new ArrayList<String>();  //存储属性名
-	private ArrayList<attributeType> attributeTypes = new ArrayList<attributeType>();  //存储属性类型 (DESCRETE, CONTINUOUS)
+	private ArrayList<AttributeType> attributeTypes = new ArrayList<AttributeType>();  //存储属性类型 (DISCRETE, CONTINUOUS)
 	private ArrayList<ArrayList> attributeValues = new ArrayList<ArrayList>();  //存储每个属性的取值
 	private ArrayList<String[]> data = new ArrayList<String[]>();  //存储String格式数据
 	private int classAttributeIdx = -1;    //分类属性在data列表中的索引
-
+	private double[] newSplitPoint;
 	//读取ARFF格式数据文件
 	public void readARFF(String filename) {
 		try {
@@ -94,11 +106,11 @@ public class ID3 {
 				line = line.substring(nameIndex+1, line.length());
 				// System.out.println(line);
 				if(line.toUpperCase().compareTo("CONTINUOUS") == 0) {
-					attributeTypes.add(attributeType.CONTINUOUS);
+					attributeTypes.add(AttributeType.CONTINUOUS);
 					ArrayList<Double> list = new ArrayList<Double>();
 					attributeValues.add(list);
 				} else {
-					attributeTypes.add(attributeType.DESCRETE);
+					attributeTypes.add(AttributeType.DISCRETE);
 					String[] values = line.split(",");
 					ArrayList<String> list = new ArrayList<String>();
 					for (String value : values) {
@@ -108,9 +120,10 @@ public class ID3 {
 				}
 			}
 			attributes.add("classLabel");
-			attributeTypes.add(attributeType.DESCRETE);
+			attributeTypes.add(AttributeType.DISCRETE);
 			attributeValues.add(classValues);
 			setClassAttribute("classLabel");
+			newSplitPoint = new double[attributes.size()];
 			reader.close();
 		} catch (IOException ioe) {
 			ioe.printStackTrace();
@@ -122,7 +135,7 @@ public class ID3 {
 			String line = "";
 			ArrayList<Integer> contiAttributesIndex = new ArrayList<Integer>();
 			for (int i = 0; i < attributeTypes.size(); i++) {
-				if(attributeTypes.get(i) == attributeType.CONTINUOUS)
+				if(attributeTypes.get(i) == AttributeType.CONTINUOUS)
 					contiAttributesIndex.add(i);
 			}
 			while ((line = reader.readLine()) != null) {		
@@ -240,11 +253,93 @@ public class ID3 {
 		return entropy;
 	}
 
-	//计算信息增益
-	public double calInformationGain(ArrayList<Integer> subset, int index) {
+	public int compareTo(Object attributeValue, int attributeIndex, String[] oneRecord) {
+		if (oneRecord[attributeIndex].compareTo("?") == 0) return UNKNOWN;
+		if (attributeTypes.get(attributeIndex) == AttributeType.DISCRETE) {
+			return oneRecord[attributeIndex].compareTo((String)attributeValue);
+		}
+		Double recordValue = Double.parseDouble(oneRecord[attributeIndex]);
+		return recordValue.compareTo((Double)attributeValue);
+	}
+
+	private class Pair implements Comparable{
+		Double value;
+		Integer index;
+		public Pair(Double v, Integer i) {
+			value = v;
+			index = i;
+		}
+		public int compareTo(Object obj) {
+			Pair tmp = (Pair)obj;
+			if (tmp.value.compareTo(value) != 0){
+				return value.compareTo(tmp.value);	
+			}
+				return index.compareTo(tmp.index);
+		}
+		public String toString() {
+			return "(" + value.toString() + ", " + index.toString() + ")";
+		}
+	}
+	public double calSubsetInfo(TreeSet<Pair> subset, double splitPoint) {
+		ArrayList<String> classattrval = attributeValues.get(classAttributeIdx);
+		// < splitPoint
+		SortedSet<Pair> lowerSet = subset.headSet(new Pair(splitPoint, -1));
+		// >= splitPoint
+		SortedSet<Pair> upperSet = subset.tailSet(new Pair(splitPoint, -1));
+		int info[][] = new int[2][classattrval.size()];
+		Iterator<Pair> iter = lowerSet.iterator();
+		while(iter.hasNext()) {
+			int instance = iter.next().index;
+			String classAttr = data.get(instance)[classAttributeIdx];
+			info[0][classattrval.indexOf(classAttr)]++;	
+		}
+		iter = upperSet.iterator();
+		while(iter.hasNext()) {
+			int instance = iter.next().index;
+			String classAttr = data.get(instance)[classAttributeIdx];
+			info[1][classattrval.indexOf(classAttr)]++;	
+		}
+		return (calEntropy(info[0])*lowerSet.size()+
+				calEntropy(info[1])*upperSet.size())/subset.size();
+	}
+	public double calContinuousInfoGain(ArrayList<Integer> subset, int index) {
 		//整体的熵
 		double infoD = calEntropy(classCount(subset));
+		
+		TreeSet<Pair> values = new TreeSet<Pair>();
+		TreeSet<Double> diffValues = new TreeSet<Double>(); 
+		for (int i : subset) {
+			String dataStr = data.get(i)[index];
+			if (dataStr.compareTo("?") == 0) continue;
+			Double tmp = Double.parseDouble(dataStr);
+			values.add(new Pair(tmp, i));
+			diffValues.add(tmp);
+		}
+		if(diffValues.size() < 2) return 0;
+		// System.out.println("------\n"  + diffValues);
+		double min_info = Double.MAX_VALUE;
+		double splitPoint = Double.MAX_VALUE;
+		Iterator iter = diffValues.iterator();
+		iter.next();  //跳过第一个分割点
+		while(iter.hasNext()) {
+			Double point = (Double)iter.next();
+			double entropy = calSubsetInfo(values, point);
+			// System.out.println(entropy + " " + splitPoint);
+			if (entropy < min_info){
+				splitPoint = point;
+				min_info = entropy;
+			}
+		}
+		newSplitPoint[index] = splitPoint;
+		System.out.println(attributes.get(index) + ": " + splitPoint);
+		//由属性index划分后的熵
+		return infoD - min_info;
+	}
 
+	//计算信息增益
+	public double calDiscreteInfoGain(ArrayList<Integer> subset, int index) {
+		//整体的熵
+		double infoD = calEntropy(classCount(subset));
 		//由属性index划分后的熵
 		ArrayList<String> classattrval = attributeValues.get(classAttributeIdx);
 		ArrayList<String> attrval = attributeValues.get(index);
@@ -252,7 +347,9 @@ public class ID3 {
 		int[] count = new int[attrval.size()];
 		for (int i = 0; i < subset.size(); i++) {
 			int n = subset.get(i);
-			int attrvalIndex = attrval.indexOf(data.get(n)[index]);
+			int attrvalIndex;
+			if (data.get(n)[index].compareTo("?") == 0) continue;
+			attrvalIndex = attrval.indexOf(data.get(n)[index]);
 			int classattrvalIndex = classattrval.indexOf(data.get(n)[classAttributeIdx]);
 			info[attrvalIndex][classattrvalIndex]++;
 			count[attrvalIndex]++;
@@ -262,7 +359,6 @@ public class ID3 {
 		for (int i = 0; i < attrval.size(); i++) {
 			infoDA += calEntropy(info[i]) * count[i] / sum;
 		}
-
 		return infoD - infoDA;
 	}
 
@@ -278,14 +374,14 @@ public class ID3 {
 		for (int i = 0; i < data.size(); i++) {
 			subset.add(i);
 		}
-		treeRoot = buildSubDecisionTree(selattr, subset, -1);
+		treeRoot = buildSubDecisionTree(selattr, subset);
+		treeRoot.pDecompositionValue = -1.0;
 	}
 
 	//构建子集的分类决策树
-	public TreeNode buildSubDecisionTree(LinkedList<Integer> selattr, ArrayList<Integer> subset, int pDecompositionValue) {
+	public TreeNode buildSubDecisionTree(LinkedList<Integer> selattr, ArrayList<Integer> subset) {
 		TreeNode node = new TreeNode();
-		node.pDecompositionValue = pDecompositionValue;
-
+		System.out.println("unused attris: " + selattr);
 		//如果subset中所有数据都属于同一类
 		if (classPure(subset)) {
 			node.classLabel = data.get(subset.get(0))[classAttributeIdx];
@@ -299,38 +395,85 @@ public class ID3 {
 		}
 
 		//计算各属性的信息增益，并从中选择信息增益最大的属性作为分类属性
+		System.out.println("Calculating max infoGain...");
 		int maxIndex = -1;
 		double maxInfoGain = Double.MIN_VALUE;
-		for (int i = 0; i < selattr.size(); i++) {
-			double infoGain = calInformationGain(subset, selattr.get(i));
+		for (int i : selattr) {
+			double infoGain;
+			System.out.println("----- " + attributes.get(i) + " ------");
+			if (attributeTypes.get(i) == AttributeType.CONTINUOUS)
+				infoGain = calContinuousInfoGain(subset, i);
+			else
+				infoGain = calDiscreteInfoGain(subset, i);
+			System.out.println("infoGain: " + infoGain);
 			if (infoGain > maxInfoGain) {
-				maxIndex = selattr.get(i);
+				maxIndex = i;
 				maxInfoGain = infoGain;
 			}
 		}
 
 		//划分
+		System.out.println("Choose \"" + attributes.get(maxIndex)
+						  + "\" to decompose");
 		node.decompositionAttribute = maxIndex;
 		selattr.remove(new Integer(maxIndex));
-		ArrayList<String> attrval = attributeValues.get(maxIndex);
-		for (int i = 0; i < attrval.size(); i++) {
-			ArrayList<Integer> subsubset = new ArrayList<Integer>();
-			for (int j = 0; j < subset.size(); j++) {
-				if (data.get(subset.get(j))[maxIndex].equals(attrval.get(i))) {
-					subsubset.add(subset.get(j));
-				}
+		if (attributeTypes.get(maxIndex) == AttributeType.CONTINUOUS) {
+			double splitPoint = newSplitPoint[maxIndex];
+			ArrayList<Integer> lowerSubset = new ArrayList<Integer>();
+			ArrayList<Integer> upperSubset = new ArrayList<Integer>();
+			for (int j : subset) {
+				if (compareTo(splitPoint, maxIndex, data.get(j)) >= 0)
+					upperSubset.add(j);
+				else
+					lowerSubset.add(j);
 			}
-			if (subsubset.size() != 0) {
-				TreeNode child = buildSubDecisionTree(selattr, subsubset, i);
+
+			TreeNode lowerChild;
+			if (lowerSubset.size() != 0)
+				lowerChild = buildSubDecisionTree(selattr, lowerSubset);
+			else {
+				lowerChild = new TreeNode();
+				lowerChild.classLabel = MajorityVoting(subset);
+			}
+			lowerChild.pDecompositionValue = splitPoint;
+			lowerChild.type = CompareType.LT;
+			lowerChild.parent = node;
+			node.children.add(lowerChild);
+
+			TreeNode upperChild;
+			if (upperSubset.size() != 0)
+				upperChild = buildSubDecisionTree(selattr, upperSubset);
+			else {
+				upperChild = new TreeNode();
+				upperChild.classLabel = MajorityVoting(subset);
+			}
+			upperChild.pDecompositionValue = splitPoint;
+			upperChild.type = CompareType.GE;
+			upperChild.parent = node;
+			node.children.add(upperChild);
+		} else {
+			ArrayList attrval = attributeValues.get(maxIndex);
+			for (int i = 0; i < attrval.size(); i++) {
+				ArrayList<Integer> subsubset = new ArrayList<Integer>();
+				for (int j : subset) {
+					if (compareTo(attrval.get(i), maxIndex, data.get(j)) == 0) {
+						subsubset.add(j);
+					}
+				}
+				TreeNode child;
+				if (subsubset.size() != 0)
+					child = buildSubDecisionTree(selattr, subsubset);
+				else {
+					child = new TreeNode();
+					child.classLabel = MajorityVoting(subset);
+				}
+				child.pDecompositionValue = i;
+				child.type = CompareType.EQ;
 				child.parent = node;
-				node.children.add(child);
-			} else {
-				TreeNode child = new TreeNode();
-				child.parent = node;
-				child.classLabel = MajorityVoting(subset);
 				node.children.add(child);
 			}
 		}
+		
 
 		return node;
 	}
@@ -339,7 +482,7 @@ public class ID3 {
 	public void printTree(TreeNode node) {
 		String pDepositionValue = "", decompositionAttribute = "";
 		if (node.pDecompositionValue != -1)
-			pDepositionValue = attributes.get(node.pDecompositionValue);
+			pDepositionValue = attributes.get((int)node.pDecompositionValue);
 		if (node.decompositionAttribute != -1)
 			decompositionAttribute = attributes.get(node.decompositionAttribute);
 
@@ -352,11 +495,11 @@ public class ID3 {
 	}
 
 	public void printTree(TreeNode node, String tab) {
-		if (node.pDecompositionValue != -1) {
-			TreeNode parent = node.parent;
-			System.out.println(attributeValues.get(parent.decompositionAttribute).get(node.pDecompositionValue)
-					+ "\") {");
-		}
+		// if (node.pDecompositionValue != -1) {
+		// 	TreeNode parent = node.parent;
+		// 	System.out.println(attributeValues.get(parent.decompositionAttribute).get(node.pDecompositionValue)
+		// 			+ "\") {");
+		// }
 		if (node.children.size() == 0) {
 			System.out.println(tab + "\t" + attributes.get(classAttributeIdx)
 					+ " = \"" + node.classLabel+ "\";");
@@ -364,9 +507,24 @@ public class ID3 {
 		}
 		int childsize = node.children.size();
 		for (int i = 0; i < childsize; i++) {
-			System.out.print(tab + "if( "
-					+ attributes.get(node.decompositionAttribute) + " == \"");
-			printTree(node.children.get(i), tab + "\t");
+			TreeNode child = node.children.get(i);
+			String classifier = "";
+			switch (child.type) {
+				case EQ: classifier = " == "; break;
+				case GE: classifier = " >= "; break;
+				case LT: classifier = " < "; break;
+			}
+			String pDecompositionValue;
+			if (attributeTypes.get(node.decompositionAttribute) == AttributeType.CONTINUOUS)
+				pDecompositionValue = child.pDecompositionValue + "";
+			else {
+				ArrayList<String> value = attributeValues.get(node.decompositionAttribute);
+				pDecompositionValue = value.get((int)child.pDecompositionValue);
+			}
+			System.out.println(tab + "if( "
+					+ attributes.get(node.decompositionAttribute) + classifier
+					+ "\"" + pDecompositionValue + "\") {");
+			printTree(child, tab + "\t");
 			if (i != childsize - 1)
 				System.out.print(tab + "} else ");
 			else
@@ -392,7 +550,7 @@ public class ID3 {
 		// id3.readARFF("./data/weather.nominal.arff");
 		// id3.setClassAttribute("play");
 		// 读取C4.5格式数据文件
-		id3.readC45("./data/weather.names", "./data/weather.data");
+		id3.readC45("./data/adult.names", "./data/adult.data");
 		// id3.printData();
 
 		// 构建分类决策树
