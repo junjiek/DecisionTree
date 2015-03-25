@@ -239,7 +239,7 @@ public class ID3 {
 		return recordValue.compareTo(Double.parseDouble(attributeValue));
 	}
 
-	private class Pair implements Comparable{
+	private class Pair implements Comparable {
 		Double value;
 		Integer index;
 		public Pair(Double v, Integer i) {
@@ -313,6 +313,58 @@ public class ID3 {
 		System.out.println("splitPoint: " + splitPoint);
 		//由属性index划分后的熵
 		return infoD - min_info;
+	}
+
+	double splitInfoDiscrete(HashSet<Integer> subset, int attr) {
+		ArrayList<String> attrvals = attributeValues.get(attr);
+		int counts[] = new int[attrvals.size()];
+		int size = subset.size();
+		for (int i : subset) {
+			String val = traindata.get(i)[attr];
+			if (val.compareTo("?") == 0) {
+				size --;
+				continue;
+			}
+			int index = attrvals.indexOf(val);
+			counts[index] ++;
+		}
+
+		double info = 0.0;
+		for (int count : counts) {            
+			double rate = count / (double) size;
+			if (rate != 0 && rate != 1) {
+				info += (-1 * rate) * (Math.log(rate) / Math.log(2.0));
+			}
+			//System.out.println(info);
+		}
+		if (info == 0.0) {
+			return .000001;
+		}
+		return info;
+	}
+
+	double splitInfoContinuous(HashSet<Integer> subset, int attr, double split) {
+		ArrayList<String> attrvals = attributeValues.get(attr);
+		int counts[] = new int[2];
+		for (int i : subset) {
+			Double val = Double.parseDouble(traindata.get(i)[attr]);
+			if (val < split)
+				counts[0] ++;
+			else
+				counts[1] ++;
+		}
+
+		double info = 0.0;
+		for (int count : counts) {            
+			double rate = count / (double) subset.size();
+			if (rate != 0 && rate != 1) {
+				info += (-1 * rate) * (Math.log(rate) / Math.log(2.0));
+			}
+		}
+		if (info == 0.0) {
+			return .000001;
+		}
+		return info;
 	}
 
 	//计算信息增益
@@ -438,20 +490,25 @@ public class ID3 {
 		}
 
 		//计算各属性的信息增益，并从中选择信息增益最大的属性作为分类属性
-		System.out.println("Calculating max infoGain...");
+		System.out.println("Calculating max gainRate...");
 		int maxIndex = -1;
-		double maxInfoGain = -1.0;
+		double maxGainRate = -1.0;
 		for (int i : selattr) {
-			double infoGain;
+			double gain, splitInfo, gainRate;
 			System.out.println("----- " + attributes.get(i) + " ------");
-			if (attributeTypes.get(i) == AttributeType.CONTINUOUS)
-				infoGain = calContinuousInfoGain(subset, i);
-			else
-				infoGain = calDiscreteInfoGain(subset, i);
-			System.out.println("infoGain: " + infoGain);
-			if (infoGain > maxInfoGain) {
+			if (attributeTypes.get(i) == AttributeType.CONTINUOUS) {
+				gain = calContinuousInfoGain(subset, i);
+				splitInfo = splitInfoContinuous(subset, i, newSplitPoint[i]);
+			}
+			else {
+				gain = calDiscreteInfoGain(subset, i);
+				splitInfo = splitInfoDiscrete(subset, i);
+			}
+			gainRate = gain / splitInfo;
+			System.out.println("gainRate: " + gainRate);
+			if (gainRate > maxGainRate) {
 				maxIndex = i;
-				maxInfoGain = infoGain;
+				maxGainRate = gainRate;
 			}
 		}
 
