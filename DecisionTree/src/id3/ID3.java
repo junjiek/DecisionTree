@@ -343,7 +343,7 @@ public class ID3 {
 			}
 		}
 		newSplitPoint[index] = splitPoint;
-		System.out.println(attributes.get(index) + ": " + splitPoint);
+		System.out.println("splitPoint: " + splitPoint);
 		//由属性index划分后的熵
 		return infoD - min_info;
 	}
@@ -407,16 +407,13 @@ public class ID3 {
 			debug += (str + ", ");
 		debug += "\n";
 		TreeNode node = treeRoot;
-		while (node.classLabel.length() == 0) {
+		while (node.children.size() != 0) {
 			int attr = node.decomposeAttribute;
 			debug += attributes.get(attr);
 			// TODO: add "MajorityLabel" for TreeNode
 			if (record[attr].compareTo("?") == 0) {
-				int rdm = (new Random().nextInt()) % node.children.size();
-				if (rdm < 0) rdm += node.children.size();
 				debug += ( "--( ? )-->");
-				node = node.children.get(rdm);
-				continue;
+				break;
 			}
 			TreeNode child;
 			for (int i = 0; i < node.children.size(); i++) {
@@ -467,9 +464,9 @@ public class ID3 {
 			return node;
 		} 
 
+		node.classLabel = MajorityVoting(subset);//多数表决
 		//如果selattr候选分类属性集为空
 		if (selattr.size() == 0) {
-			node.classLabel = MajorityVoting(subset);//多数表决
 			return node;
 		}
 
@@ -633,7 +630,7 @@ public class ID3 {
 		id3.readC45("./data/adult.names", "./data/adult.data", "./data/adult.test");
 		// id3.printData();
 		// 构建分类决策树
-		id3.generateTrainTestSet(0.5);
+		id3.generateTrainTestSet(0.05);
 		id3.train();
 
 		try {
