@@ -5,6 +5,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.SortedSet;
@@ -40,7 +41,7 @@ public class ID3 {
 	// private ArrayList<String> classTypes = new ArrayList<String>();  //存储分类属性种类
 	private ArrayList<String> attributes = new ArrayList<String>();  //存储属性名
 	private ArrayList<AttributeType> attributeTypes = new ArrayList<AttributeType>();  //存储属性类型 (DISCRETE, CONTINUOUS)
-	private ArrayList<ArrayList> attributeValues = new ArrayList<ArrayList>();  //存储每个属性的取值
+	private ArrayList<ArrayList<String>> attributeValues = new ArrayList<ArrayList<String>>();  //存储每个属性的取值
 	private ArrayList<String[]> data = new ArrayList<String[]>();  //存储String格式数据
 	private int classAttributeIdx = -1;    //分类属性在data列表中的索引
 	private double[] newSplitPoint;
@@ -107,7 +108,7 @@ public class ID3 {
 				// System.out.println(line);
 				if(line.toUpperCase().compareTo("CONTINUOUS") == 0) {
 					attributeTypes.add(AttributeType.CONTINUOUS);
-					ArrayList<Double> list = new ArrayList<Double>();
+					ArrayList<String> list = new ArrayList<String>();
 					attributeValues.add(list);
 				} else {
 					attributeTypes.add(AttributeType.DISCRETE);
@@ -133,17 +134,10 @@ public class ID3 {
 		try {
 			BufferedReader reader = new BufferedReader(new FileReader(dataFile));
 			String line = "";
-			ArrayList<Integer> contiAttributesIndex = new ArrayList<Integer>();
-			for (int i = 0; i < attributeTypes.size(); i++) {
-				if(attributeTypes.get(i) == AttributeType.CONTINUOUS)
-					contiAttributesIndex.add(i);
-			}
+			
 			while ((line = reader.readLine()) != null) {		
 				if (line.endsWith(".")) line = line.substring(0, line.length()-1);
 				String[] row = line.trim().split(",");
-				for (Integer index : contiAttributesIndex) {
-					attributeValues.get(index).add(Double.parseDouble(row[index]));
-				}
 				data.add(row);
 			}
 			reader.close();
@@ -280,6 +274,7 @@ public class ID3 {
 			return "(" + value.toString() + ", " + index.toString() + ")";
 		}
 	}
+
 	public double calSubsetInfo(TreeSet<Pair> subset, double splitPoint) {
 		ArrayList<String> classattrval = attributeValues.get(classAttributeIdx);
 		// < splitPoint
@@ -302,6 +297,7 @@ public class ID3 {
 		return (calEntropy(info[0])*lowerSet.size()+
 				calEntropy(info[1])*upperSet.size())/subset.size();
 	}
+
 	public double calContinuousInfoGain(ArrayList<Integer> subset, int index) {
 		//整体的熵
 		double infoD = calEntropy(classCount(subset));
@@ -364,7 +360,7 @@ public class ID3 {
 
 	// 构建分类决策树
 	public void buildDecisionTree() {
-		LinkedList<Integer> selattr = new LinkedList<Integer>();  //初始可用分类属性集为全集
+		HashSet<Integer> selattr = new HashSet<Integer>();  //初始可用分类属性集为全集
 		for (int i = 0; i < attributes.size(); i++) {
 			if (i != classAttributeIdx) {
 				selattr.add(i);
@@ -379,9 +375,8 @@ public class ID3 {
 	}
 
 	//构建子集的分类决策树
-	public TreeNode buildSubDecisionTree(LinkedList<Integer> selattr, ArrayList<Integer> subset) {
+	public TreeNode buildSubDecisionTree(HashSet<Integer> selattr, ArrayList<Integer> subset) {
 		TreeNode node = new TreeNode();
-		System.out.println("unused attris: " + selattr);
 		//如果subset中所有数据都属于同一类
 		if (classPure(subset)) {
 			node.classLabel = data.get(subset.get(0))[classAttributeIdx];
@@ -430,7 +425,7 @@ public class ID3 {
 
 			TreeNode lowerChild;
 			if (lowerSubset.size() != 0)
-				lowerChild = buildSubDecisionTree(selattr, lowerSubset);
+				lowerChild = buildSubDecisionTree(new HashSet<Integer>(selattr), lowerSubset);
 			else {
 				lowerChild = new TreeNode();
 				lowerChild.classLabel = MajorityVoting(subset);
@@ -442,7 +437,7 @@ public class ID3 {
 
 			TreeNode upperChild;
 			if (upperSubset.size() != 0)
-				upperChild = buildSubDecisionTree(selattr, upperSubset);
+				upperChild = buildSubDecisionTree(new HashSet<Integer>(selattr), upperSubset);
 			else {
 				upperChild = new TreeNode();
 				upperChild.classLabel = MajorityVoting(subset);
@@ -452,7 +447,7 @@ public class ID3 {
 			upperChild.parent = node;
 			node.children.add(upperChild);
 		} else {
-			ArrayList attrval = attributeValues.get(maxIndex);
+			ArrayList<String> attrval = attributeValues.get(maxIndex);
 			for (int i = 0; i < attrval.size(); i++) {
 				ArrayList<Integer> subsubset = new ArrayList<Integer>();
 				for (int j : subset) {
@@ -460,9 +455,10 @@ public class ID3 {
 						subsubset.add(j);
 					}
 				}
+				System.out.println(attrval.get(i) + ": " + subsubset.size());
 				TreeNode child;
 				if (subsubset.size() != 0)
-					child = buildSubDecisionTree(selattr, subsubset);
+					child = buildSubDecisionTree(new HashSet<Integer>(selattr), subsubset);
 				else {
 					child = new TreeNode();
 					child.classLabel = MajorityVoting(subset);
@@ -557,6 +553,6 @@ public class ID3 {
 		id3.buildDecisionTree();
 		id3.printTree(id3.treeRoot, "");
 		long endTime = System.currentTimeMillis();
-		System.out.println("Running time: " + (endTime - startTime)/1000.0 + "s");
+		System.out.println("Tree built, running time: " + (endTime - startTime)/1000.0 + "s");
 	}
 }
