@@ -28,8 +28,8 @@ public class ID3 {
 	class TreeNode {
 		
 		public TreeNode parent = null;			 //父节点
-		public int decompositionAttribute = -1;  //当前节点分类属性
-		public double pDecompositionValue = -1;  //父节点分类属性值
+		public int decomposeAttribute = -1;  //当前节点分类属性
+		public double pDecomposeValue = -1;  //父节点分类属性值
 		public CompareType type = CompareType.EQ;
 		public ArrayList<TreeNode> children = new ArrayList<TreeNode>();  //子节点列表
 		public String classLabel = "";      //若当前节点为叶节点，则该节点表示的类别
@@ -388,7 +388,7 @@ public class ID3 {
 		}
 		treeSize = 0;
 		treeRoot = buildDecisionTree(selattr, trainSet);
-		treeRoot.pDecompositionValue = -1.0;
+		treeRoot.pDecomposeValue = -1.0;
 	}
 
 	public void test() {
@@ -436,7 +436,7 @@ public class ID3 {
 		//划分
 		System.out.println("Choose \"" + attributes.get(maxIndex)
 						  + "\" to decompose");
-		node.decompositionAttribute = maxIndex;
+		node.decomposeAttribute = maxIndex;
 		selattr.remove(new Integer(maxIndex));
 		if (attributeTypes.get(maxIndex) == AttributeType.CONTINUOUS) {
 			treeSize += 2;
@@ -457,7 +457,7 @@ public class ID3 {
 				lowerChild = new TreeNode();
 				lowerChild.classLabel = MajorityVoting(subset);
 			}
-			lowerChild.pDecompositionValue = splitPoint;
+			lowerChild.pDecomposeValue = splitPoint;
 			lowerChild.type = CompareType.LT;
 			lowerChild.parent = node;
 			node.children.add(lowerChild);
@@ -469,7 +469,7 @@ public class ID3 {
 				upperChild = new TreeNode();
 				upperChild.classLabel = MajorityVoting(subset);
 			}
-			upperChild.pDecompositionValue = splitPoint;
+			upperChild.pDecomposeValue = splitPoint;
 			upperChild.type = CompareType.GE;
 			upperChild.parent = node;
 			node.children.add(upperChild);
@@ -491,7 +491,7 @@ public class ID3 {
 					child = new TreeNode();
 					child.classLabel = MajorityVoting(subset);
 				}
-				child.pDecompositionValue = i;
+				child.pDecomposeValue = i;
 				child.type = CompareType.EQ;
 				child.parent = node;
 				node.children.add(child);
@@ -519,16 +519,16 @@ public class ID3 {
 				case GE: classifier = " >= "; break;
 				case LT: classifier = " < "; break;
 			}
-			String pDecompositionValue;
-			if (attributeTypes.get(node.decompositionAttribute) == AttributeType.CONTINUOUS)
-				pDecompositionValue = child.pDecompositionValue + "";
+			String pDecomposeValue;
+			if (attributeTypes.get(node.decomposeAttribute) == AttributeType.CONTINUOUS)
+				pDecomposeValue = child.pDecomposeValue + "";
 			else {
-				ArrayList<String> value = attributeValues.get(node.decompositionAttribute);
-				pDecompositionValue = value.get((int)child.pDecompositionValue);
+				ArrayList<String> value = attributeValues.get(node.decomposeAttribute);
+				pDecomposeValue = value.get((int)child.pDecomposeValue);
 			}
 			out.write(tab + "if( "
-					+ attributes.get(node.decompositionAttribute) + classifier
-					+ "\"" + pDecompositionValue + "\") {");
+					+ attributes.get(node.decomposeAttribute) + classifier
+					+ "\"" + pDecomposeValue + "\") {");
 			out.newLine();
 			printTree(child, tab + "\t", out);
 			if (i != childsize - 1) {
