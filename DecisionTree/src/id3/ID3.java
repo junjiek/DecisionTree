@@ -1,8 +1,6 @@
 package id3;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -474,31 +472,12 @@ public class ID3 {
 		return node;
 	}
 
-	//决策树的先根遍历
-	public void printTree(TreeNode node) {
-		String pDepositionValue = "", decompositionAttribute = "";
-		if (node.pDecompositionValue != -1)
-			pDepositionValue = attributes.get((int)node.pDecompositionValue);
-		if (node.decompositionAttribute != -1)
-			decompositionAttribute = attributes.get(node.decompositionAttribute);
 
-		System.out.println(pDepositionValue + "\t" + decompositionAttribute);
-		if (node.children.size() != 0) {
-			for (TreeNode tnode : node.children) {
-				printTree(tnode);
-			}
-		}
-	}
-
-	public void printTree(TreeNode node, String tab) {
-		// if (node.pDecompositionValue != -1) {
-		// 	TreeNode parent = node.parent;
-		// 	System.out.println(attributeValues.get(parent.decompositionAttribute).get(node.pDecompositionValue)
-		// 			+ "\") {");
-		// }
+	public void printTree(TreeNode node, String tab, BufferedWriter out) throws IOException{
 		if (node.children.size() == 0) {
-			System.out.println(tab + "\t" + attributes.get(classAttributeIdx)
+			out.write(tab + "\t" + attributes.get(classAttributeIdx)
 					+ " = \"" + node.classLabel+ "\";");
+			out.newLine();
 			return;
 		}
 		int childsize = node.children.size();
@@ -517,26 +496,21 @@ public class ID3 {
 				ArrayList<String> value = attributeValues.get(node.decompositionAttribute);
 				pDecompositionValue = value.get((int)child.pDecompositionValue);
 			}
-			System.out.println(tab + "if( "
+			out.write(tab + "if( "
 					+ attributes.get(node.decompositionAttribute) + classifier
 					+ "\"" + pDecompositionValue + "\") {");
-			printTree(child, tab + "\t");
-			if (i != childsize - 1)
-				System.out.print(tab + "} else ");
-			else
-				System.out.println(tab + "}");
-		}
-
-	}
-
-	//决策树的后根遍历
-	public void nprintTree(TreeNode node) {
-		if (node.children.size() != 0) {
-			for (TreeNode tnode : node.children) {
-				printTree(tnode);
+			out.newLine();
+			printTree(child, tab + "\t", out);
+			if (i != childsize - 1) {
+				out.write(tab + "} else ");
+				out.newLine();
+			}
+			else {
+				out.write(tab + "}");
+				out.newLine();
 			}
 		}
-		System.out.println(node.pDecompositionValue + "\t" + node.decompositionAttribute);
+
 	}
 
 	public static void main(String[] args) {
@@ -548,11 +522,20 @@ public class ID3 {
 		// 读取C4.5格式数据文件
 		id3.readC45("./data/adult.names", "./data/adult.data");
 		// id3.printData();
-
 		// 构建分类决策树
 		id3.buildDecisionTree();
-		id3.printTree(id3.treeRoot, "");
+
+		try {
+			BufferedWriter myout = new BufferedWriter(new FileWriter(new File("./tree.txt")));       
+			id3.printTree(id3.treeRoot, "", myout); 
+		} catch(Exception e) {
+			System.out.println(e);
+		}
+		
 		long endTime = System.currentTimeMillis();
-		System.out.println("Tree built, running time: " + (endTime - startTime)/1000.0 + "s");
+		System.out.println("========= Tree built, running time: "
+						    + (endTime - startTime)/1000.0 + "s =========");
+
+		// id3.readC45("")
 	}
 }
