@@ -18,23 +18,25 @@ import javax.naming.ldap.Rdn;
 
 public class ID3 {
 	
+	private static final int UNKNOWN = Integer.MAX_VALUE;
+	private static final double zalpha2 = 1.150;  // p = 0.25 two-sided
 	private enum AttributeType {
 		CONTINUOUS, DISCRETE
 	}
-	private static final int UNKNOWN = Integer.MAX_VALUE;
 	private enum CompareType {
 		EQ, LT, GE
 	}
+
 	
 	class TreeNode {
-		
 		public TreeNode parent = null;			 //父节点
 		public int decomposeAttribute = -1;  //当前节点分类属性
 		public String pDecomposeValue = "";  //父节点分类属性值
 		public CompareType type = CompareType.EQ;
 		public ArrayList<TreeNode> children = new ArrayList<TreeNode>();  //子节点列表
-		public String classLabel = "";      //若当前节点为叶节点，则该节点表示的类别
-		public ArrayList<Integer> data = new ArrayList<Integer>();  // 保存validation set的信息
+		public boolean leaf = false;
+		public String classLabel = "";  //若当前节点为叶节点，则该节点表示的类别
+		public int[] data = new int[2];  // 保存validation set的信息，方便起见，直接默认是两个分类
 	}
 	private int treeSize = 0;
 	private TreeNode treeRoot = null;
@@ -410,7 +412,7 @@ public class ID3 {
 		return infoD - infoDA;
 	}
 
-	public void generateTrainTestSet(double trainRate, double validationRate) {
+	private void generateTrainTestSet(double trainRate, double validationRate) {
 		// 选取train set
 		int trainSetSize = (int)(trainRate * traindata.size());
 		trainSet = new HashSet<Integer>(trainSetSize);
@@ -455,16 +457,15 @@ public class ID3 {
 		treeRoot.pDecomposeValue = "";
 	}
 
-	public String classifyOneRecord(String[] record, BufferedWriter out) throws IOException{
+	private String classifyOneRecord(String[] record, BufferedWriter out) throws IOException{
 		String debug = "---------------------------\n";
 		for (String str : record)
 			debug += (str + ", ");
 		debug += "\n";
 		TreeNode node = treeRoot;
-		while (node.children.size() != 0) {
+		while (!node.leaf) {
 			int attr = node.decomposeAttribute;
 			debug += attributes.get(attr);
-			// TODO: add "MajorityLabel" for TreeNode
 			if (record[attr].compareTo("?") == 0) {
 				debug += ( "--( ? )-->");
 				break;
@@ -509,18 +510,82 @@ public class ID3 {
 		return correct * 1.0 / testdata.size();
 	}
 
+	private void traceOneRecord(String[] record) {
+		ArrayList<String> classattrval = attributeValues.get(classAttributeIdx);
+		int classval = classattrval.indexOf(record[classAttributeIdx]);
+		TreeNode node = treeRoot;
+		while (!node.leaf) {
+			node.data[classval] ++;
+			int attr = node.decomposeAttribute;
+			if (record[attr].compareTo("?") == 0) break;
+			TreeNode child;
+			for (int i = 0; i < node.children.size(); i++) {
+				child = node.children.get(i);
+				int cmp = compareTo(child.pDecomposeValue, attr, record);
+				boolean match1 = child.type == CompareType.EQ && cmp == 0;
+				boolean match2 = child.type == CompareType.GE && cmp >= 0;
+				boolean match3 = child.type == CompareType.LT && cmp < 0;
+				if (match1 || match2 || match3) {
+					node = child;
+					break;
+				}
+			}
+		}
+		node.data[classval] ++;
+		return;
+	}
+
+	private void classifyValidationSet() {
+		for(int i : validationSet) {
+			traceOneRecord(traindata.get(i));
+		}
+	}
+
+	public void pruning() {
+		classifyValidationSet();
+		PEPrune(treeRoot);
+	}
+
+	private double PEPrune(TreeNode node) {
+		double prunedError = pessimisticError(node);
+		if (node.leaf)
+			return prunedError;
+		double childError = 0.0;
+		for(TreeNode child : node.children) {
+			childError += PEPrune(child);
+		}
+		if (prunedError < childError) {
+			// prune
+			// System.out.println("pruned");
+			node.leaf = true;
+			return prunedError;
+		}
+		// don't prune
+		return childError;
+	}
+
+	private double pessimisticError(TreeNode node) {
+		int n = node.data[0] + node.data[1]; 
+		double wrong = Math.min(node.data[0], node.data[1]);
+		double p = (wrong + 1.0)/(n + 2.0);
+		return n * (p + zalpha2 * Math.sqrt(p*(1.0-p) / (n+2.0)));
+	}
+
+
 	//构建子集的分类决策树
 	public TreeNode buildDecisionTree(HashSet<Integer> selattr, HashSet<Integer> subset) {
 		TreeNode node = new TreeNode();
 		//如果subset中所有数据都属于同一类
 		if (classPure(subset)) {
 			node.classLabel = traindata.get(subset.iterator().next())[classAttributeIdx];
+			node.leaf = true;
 			return node;
 		} 
 
 		node.classLabel = MajorityVoting(subset);//多数表决
 		//如果selattr候选分类属性集为空
 		if (selattr.size() == 0) {
+			node.leaf = true;
 			return node;
 		}
 
@@ -571,6 +636,7 @@ public class ID3 {
 				lowerChild = buildDecisionTree(new HashSet<Integer>(selattr), lowerSubset);
 			else {
 				lowerChild = new TreeNode();
+				lowerChild.leaf = true;
 				lowerChild.classLabel = MajorityVoting(subset);
 			}
 			lowerChild.pDecomposeValue = splitPoint + "";
@@ -583,6 +649,7 @@ public class ID3 {
 				upperChild = buildDecisionTree(new HashSet<Integer>(selattr), upperSubset);
 			else {
 				upperChild = new TreeNode();
+				upperChild.leaf = true;
 				upperChild.classLabel = MajorityVoting(subset);
 			}
 			upperChild.pDecomposeValue = splitPoint + "";
@@ -604,6 +671,7 @@ public class ID3 {
 					child = buildDecisionTree(new HashSet<Integer>(selattr), subsubset);
 				else {
 					child = new TreeNode();
+					child.leaf = true;
 					child.classLabel = MajorityVoting(subset);
 				}
 				child.pDecomposeValue = attrval;
@@ -613,15 +681,15 @@ public class ID3 {
 			}
 		}
 		
-
 		return node;
 	}
 
 
 	public void printTreeToFile(TreeNode node, String tab, BufferedWriter out) throws IOException{
-		if (node.children.size() == 0) {
+		if (node.leaf) {
 			out.write(tab + attributes.get(classAttributeIdx)
 					+ " = \"" + node.classLabel+ "\";");
+					// + "(" + node.data[0] + ", " + node.data[1] + ")");
 			out.newLine();
 			return;
 		}
@@ -657,7 +725,7 @@ public class ID3 {
 		id3.readC45("./data/adult.names", "./data/adult.data", "./data/adult.test");
 		// id3.printData();
 		// 构建分类决策树
-		id3.generateTrainTestSet(0.05, 0.4);
+		id3.generateTrainTestSet(0.1, 0.4);
 		id3.train();
 
 		try {
@@ -672,8 +740,10 @@ public class ID3 {
 		System.out.println("========= Tree built, size:" + id3.treeSize +
 							" , running time: " + (endTime - startTime)/1000.0
 							 + "s =========");
+		
+		System.out.println("pruning...");
+		id3.pruning();
 		System.out.println("testing...");
-
 		try {
 			BufferedWriter testout = new BufferedWriter(new FileWriter(new File("./test")));       
 			double accuracy = id3.test(testout);
@@ -682,5 +752,6 @@ public class ID3 {
 		} catch(Exception e) {
 			System.out.println(e);
 		}
+		
 	}
 }
