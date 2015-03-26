@@ -29,7 +29,7 @@ public class ID3 {
 
 	
 	class TreeNode {
-		public TreeNode parent = null;			 //父节点
+		public TreeNode parent = null;       //父节点
 		public int decomposeAttribute = -1;  //当前节点分类属性
 		public String pDecomposeValue = "";  //父节点分类属性值
 		public CompareType type = CompareType.EQ;
@@ -557,6 +557,7 @@ public class ID3 {
 		if (prunedError < childError) {
 			// prune
 			// System.out.println("pruned");
+			treeSize -= node.children.size();
 			node.leaf = true;
 			return prunedError;
 		}
@@ -725,7 +726,7 @@ public class ID3 {
 		id3.readC45("./data/adult.names", "./data/adult.data", "./data/adult.test");
 		// id3.printData();
 		// 构建分类决策树
-		id3.generateTrainTestSet(0.1, 0.4);
+		id3.generateTrainTestSet(1, 0.4);
 		id3.train();
 
 		try {
@@ -743,6 +744,7 @@ public class ID3 {
 		
 		System.out.println("pruning...");
 		id3.pruning();
+		System.out.println("========= Pruned size:" + id3.treeSize +" =========");
 		System.out.println("testing...");
 		try {
 			BufferedWriter testout = new BufferedWriter(new FileWriter(new File("./test")));       
