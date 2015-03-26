@@ -295,20 +295,36 @@ public class ID3 {
 			diffValues.add(tmp);
 		}
 		if(diffValues.size() < 2) return 0;
-		// System.out.println("------\n"  + diffValues);
+		// 取中点为划分点
+		ArrayList<Double> splitPoints = new ArrayList<Double>();
+		Iterator<Double> iter = diffValues.iterator();
+		Double p1 = iter.next();
+		while (iter.hasNext()) {
+			Double p2 = iter.next();
+			splitPoints.add((p1 + p2) / 2);
+			p1 = p2;
+		}
 		double min_info = Double.MAX_VALUE;
 		double splitPoint = Double.MAX_VALUE;
-		Iterator iter = diffValues.iterator();
-		iter.next();  //跳过第一个分割点
-		while(iter.hasNext()) {
-			Double point = (Double)iter.next();
+		for (double point : splitPoints) {
 			double entropy = calSubsetInfo(values, point);
-			// System.out.println(entropy + " " + splitPoint);
 			if (entropy < min_info){
 				splitPoint = point;
 				min_info = entropy;
 			}
 		}
+		// 直接取右值为划分点
+		// Iterator<Double> iter = diffValues.iterator();
+		// iter.next();  //跳过第一个分割点
+		// while(iter.hasNext()) {
+		// 	Double point = (Double)iter.next();
+		// 	double entropy = calSubsetInfo(values, point);
+		// 	if (entropy < min_info){
+		// 		splitPoint = point;
+		// 		min_info = entropy;
+		// 	}
+		// }
+
 		newSplitPoint[index] = splitPoint;
 		System.out.println("splitPoint: " + splitPoint);
 		//由属性index划分后的熵
@@ -622,7 +638,7 @@ public class ID3 {
 		id3.readC45("./data/adult.names", "./data/adult.data", "./data/adult.test");
 		// id3.printData();
 		// 构建分类决策树
-		id3.generateTrainTestSet(0.05);
+		id3.generateTrainTestSet(0.5);
 		id3.train();
 
 		try {
