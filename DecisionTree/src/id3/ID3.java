@@ -34,10 +34,12 @@ public class ID3 {
 		public CompareType type = CompareType.EQ;
 		public ArrayList<TreeNode> children = new ArrayList<TreeNode>();  //子节点列表
 		public String classLabel = "";      //若当前节点为叶节点，则该节点表示的类别
+		public ArrayList<Integer> data = new ArrayList<Integer>();  // 保存validation set的信息
 	}
 	private int treeSize = 0;
 	private TreeNode treeRoot = null;
 	private HashSet<Integer> trainSet;
+	private HashSet<Integer> validationSet;
 	// private ArrayList<String> classTypes = new ArrayList<String>();  //存储分类属性种类
 	private ArrayList<String> attributes = new ArrayList<String>();  //存储属性名
 	private ArrayList<AttributeType> attributeTypes = new ArrayList<AttributeType>();  //存储属性类型 (DISCRETE, CONTINUOUS)
@@ -408,18 +410,35 @@ public class ID3 {
 		return infoD - infoDA;
 	}
 
-	public void generateTrainTestSet(double trainRate) {
-		int trainSetSize = (int)(traindata.size()*trainRate);
-		trainSet = new HashSet<Integer>(trainSetSize);  //初始数据集
+	public void generateTrainTestSet(double trainRate, double validationRate) {
+		// 选取train set
+		int trainSetSize = (int)(trainRate * traindata.size());
+		trainSet = new HashSet<Integer>(trainSetSize);
 		Random rdm = new Random(System.currentTimeMillis());
 		for (int i = 0; i < trainSetSize; i++) {
-			Integer trainData = rdm.nextInt() % traindata.size();
-			if (trainData < 0) trainData += traindata.size();
-			while (trainSet.contains(trainData)) {
-				trainData = rdm.nextInt() % traindata.size();
-				if (trainData < 0) trainData += traindata.size();
+			Integer train = rdm.nextInt() % traindata.size();
+			if (train < 0) train += traindata.size();
+			while (trainSet.contains(train)) {
+				train = rdm.nextInt() % traindata.size();
+				if (train < 0) train += traindata.size();
 			}
-			trainSet.add(trainData);
+			trainSet.add(train);
+		}
+		// 在train set中选取validation set
+		if (validationRate <= 0) return;
+		int validationSetSize = (int)(validationRate * trainSetSize);
+		validationSet = new HashSet<Integer>(validationSetSize);
+		ArrayList<Integer> trainsetList = new ArrayList<Integer>(trainSet);
+		for (int i = 0; i < validationSetSize; i++) {
+			Integer rdmIdx = rdm.nextInt() % trainSetSize;
+			if (rdmIdx < 0) rdmIdx += trainSetSize;
+			while (validationSet.contains(trainsetList.get(rdmIdx))) {
+				rdmIdx = rdm.nextInt() % trainSetSize;
+				if (rdmIdx < 0) rdmIdx += trainSetSize;
+			}
+			Integer validation = trainsetList.get(rdmIdx);
+			validationSet.add(validation);
+			trainSet.remove(validation);
 		}
 		return;
 	}
@@ -638,7 +657,7 @@ public class ID3 {
 		id3.readC45("./data/adult.names", "./data/adult.data", "./data/adult.test");
 		// id3.printData();
 		// 构建分类决策树
-		id3.generateTrainTestSet(0.5);
+		id3.generateTrainTestSet(0.05, 0.4);
 		id3.train();
 
 		try {
