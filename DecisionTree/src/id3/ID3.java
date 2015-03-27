@@ -543,7 +543,33 @@ public class ID3 {
 
 	public void pruning() {
 		classifyValidationSet();
-		PEPrune(treeRoot);
+		// PEPrune(treeRoot);
+		REPrune(treeRoot);
+	}
+
+
+	private int REPrune(TreeNode node) {
+		ArrayList<String> classattrval = attributeValues.get(classAttributeIdx);
+		int label = classattrval.indexOf(node.classLabel);
+		int rightNum = node.data[label];
+		if (node.leaf) {
+			return rightNum;
+		}
+		int tot = node.data[0] + node.data[1];
+		if (tot == 0) return rightNum;
+		int childCorrect = 0;
+		for (TreeNode child : node.children) {
+			childCorrect += REPrune(child);
+		}
+		if (rightNum > childCorrect) {
+			//prune
+			treeSize -= node.children.size();
+			node.leaf = true;
+			// node.classLabel = classattrval.get(label);
+			return rightNum;
+		}
+		// don't prune
+		return childCorrect;
 	}
 
 	private double PEPrune(TreeNode node) {
@@ -590,7 +616,7 @@ public class ID3 {
 			return node;
 		}
 
-		//计算各属性的信息增益，并从中选择信息增益最大的属性作为分类属性
+		//计算各属性的信息增益，并从中选择信息增益率最大的属性作为分类属性
 		System.out.println("Calculating max gainRate...");
 		int maxIndex = -1;
 		double maxGainRate = -1.0;
@@ -726,7 +752,7 @@ public class ID3 {
 		id3.readC45("./data/adult.names", "./data/adult.data", "./data/adult.test");
 		// id3.printData();
 		// 构建分类决策树
-		id3.generateTrainTestSet(1, 0.4);
+		id3.generateTrainTestSet(0.5, 0.4);
 		id3.train();
 
 		try {
@@ -742,9 +768,9 @@ public class ID3 {
 							" , running time: " + (endTime - startTime)/1000.0
 							 + "s =========");
 		
-		System.out.println("pruning...");
-		id3.pruning();
-		System.out.println("========= Pruned size:" + id3.treeSize +" =========");
+		 System.out.println("pruning...");
+		 id3.pruning();
+		 System.out.println("========= Pruned size:" + id3.treeSize +" =========");
 		System.out.println("testing...");
 		try {
 			BufferedWriter testout = new BufferedWriter(new FileWriter(new File("./test")));       
