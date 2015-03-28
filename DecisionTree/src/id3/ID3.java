@@ -894,23 +894,9 @@ public class ID3 {
 	}
 
 	public static void main(String[] args) {
-		try {
-			PrintStream myout = new PrintStream(new FileOutputStream(new File("./log3")));       
-			System.setOut(myout);        
-			System.setErr(myout);
-		} catch (FileNotFoundException e) {
-			System.out.println(e);
-		}
-		for (int i = 10; i < 20; i++) {
-			double trainRate = i * 0.05;
-			double tmp = 0.0;
-			for (int j = 0; j < 5; j++) {
-				ID3 id3 = new ID3();
-				tmp += id3.task1(trainRate);				
-			}
-			System.out.println( "****** " + trainRate + ": " + tmp/5);
-		}
-		// id3.task2(0.05, 0.4);
+		ID3 id3 = new ID3();
+		// id3.task1(0.05);
+		id3.task2(0.05, 0.4);
 		// id3.task3();
 		
 		
