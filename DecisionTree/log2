@@ -1,0 +1,110 @@
+========= Tree built, size:12879 , running time: 169.4s =========
+accuracy : 0.8291996597081343
+========= Tree built, size:12823 , running time: 147.386s =========
+accuracy : 0.8290033374779138
+========= Tree built, size:13256 , running time: 189.395s =========
+accuracy : 0.8269746744323015
+========= Tree built, size:11914 , running time: 160.562s =========
+accuracy : 0.8290033374779138
+========= Tree built, size:11857 , running time: 166.046s =========
+accuracy : 0.8246188076696551
+****** 0.5: 0.8277599633531837
+========= Tree built, size:12305 , running time: 246.102s =========
+accuracy : 0.8242916039526209
+========= Tree built, size:14638 , running time: 184.787s =========
+accuracy : 0.8250114521300962
+========= Tree built, size:13199 , running time: 157.572s =========
+accuracy : 0.8299849486290164
+========= Tree built, size:13279 , running time: 161.927s =========
+accuracy : 0.8302467116026438
+========= Tree built, size:13647 , running time: 189.252s =========
+accuracy : 0.8265820299718605
+****** 0.55: 0.8272233492572475
+========= Tree built, size:15120 , running time: 210.393s =========
+accuracy : 0.8278908448399974
+========= Tree built, size:14295 , running time: 206.917s =========
+accuracy : 0.8287415745042863
+========= Tree built, size:14629 , running time: 200.758s =========
+accuracy : 0.8252732151037235
+========= Tree built, size:14461 , running time: 216.545s =========
+accuracy : 0.8258621817943852
+========= Tree built, size:14088 , running time: 211.448s =========
+accuracy : 0.8309011190367123
+****** 0.6000000000000001: 0.827733787055821
+========= Tree built, size:15080 , running time: 235.353s =========
+accuracy : 0.8304430338328643
+========= Tree built, size:15010 , running time: 216.6s =========
+accuracy : 0.833518748772986
+========= Tree built, size:15434 , running time: 280.392s =========
+accuracy : 0.8295923041685753
+========= Tree built, size:15714 , running time: 246.003s =========
+accuracy : 0.8298540671422028
+========= Tree built, size:14940 , running time: 282.893s =========
+accuracy : 0.829723185655389
+****** 0.65: 0.8306262679144035
+========= Tree built, size:16904 , running time: 279.891s =========
+accuracy : 0.8316209672141875
+========= Tree built, size:15420 , running time: 281.922s =========
+accuracy : 0.8283489300438452
+========= Tree built, size:16328 , running time: 247.139s =========
+accuracy : 0.828479811530659
+========= Tree built, size:16378 , running time: 262.937s =========
+accuracy : 0.8300503893724233
+========= Tree built, size:15746 , running time: 258.448s =========
+accuracy : 0.8309011190367123
+****** 0.7000000000000001: 0.8298802434395653
+========= Tree built, size:17263 , running time: 339.994s =========
+accuracy : 0.8316864079575944
+========= Tree built, size:17713 , running time: 298.439s =========
+accuracy : 0.8307047968064917
+========= Tree built, size:17619 , running time: 271.797s =========
+accuracy : 0.8321444931614423
+========= Tree built, size:17178 , running time: 335.943s =========
+accuracy : 0.8309665597801191
+========= Tree built, size:17283 , running time: 272.698s =========
+accuracy : 0.8328643413389176
+****** 0.75: 0.831673319808913
+========= Tree built, size:19147 , running time: 294.777s =========
+accuracy : 0.8291996597081343
+========= Tree built, size:17384 , running time: 357.106s =========
+accuracy : 0.8330606635691381
+========= Tree built, size:18435 , running time: 312.195s =========
+accuracy : 0.8313592042405602
+========= Tree built, size:18622 , running time: 320.228s =========
+accuracy : 0.834369478437275
+========= Tree built, size:17562 , running time: 364.352s =========
+accuracy : 0.8324062561350697
+****** 0.8: 0.8320790524180355
+========= Tree built, size:20191 , running time: 399.817s =========
+accuracy : 0.8312937634971533
+========= Tree built, size:19364 , running time: 407.631s =========
+accuracy : 0.8324716968784766
+========= Tree built, size:20055 , running time: 376.234s =========
+accuracy : 0.8313592042405602
+========= Tree built, size:18036 , running time: 410.928s =========
+accuracy : 0.8288724559911
+========= Tree built, size:18494 , running time: 404.4s =========
+accuracy : 0.8321444931614423
+****** 0.8500000000000001: 0.8312283227537465
+========= Tree built, size:19686 , running time: 33031.191s =========
+accuracy : 0.832275374648256
+========= Tree built, size:18730 , running time: 456.861s =========
+accuracy : 0.8333224265427656
+========= Tree built, size:19182 , running time: 458.393s =========
+accuracy : 0.830181270859237
+========= Tree built, size:20430 , running time: 499.075s =========
+accuracy : 0.8327334598521039
+========= Tree built, size:19200 , running time: 473.968s =========
+accuracy : 0.8322099339048492
+****** 0.9: 0.8321444931614422
+========= Tree built, size:21652 , running time: 537.333s =========
+accuracy : 0.8352856488449709
+========= Tree built, size:20667 , running time: 515.3s =========
+accuracy : 0.8320136116746286
+========= Tree built, size:21511 , running time: 515.405s =========
+accuracy : 0.8341077154636477
+========= Tree built, size:19715 , running time: 482.963s =========
+accuracy : 0.8329297820823245
+========= Tree built, size:20327 , running time: 549.313s =========
+accuracy : 0.8344349191806819
+****** 0.9500000000000001: 0.8337543354492507

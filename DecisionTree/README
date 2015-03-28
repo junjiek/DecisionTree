@@ -1,0 +1,16 @@
+@Author
+姓名：柯均洁
+学号：2012011335
+班级：计24
+手机：13718883289
+邮箱：kjj3300@163.com
+
+@实验平台
+Mac_OS
+
+@运行方式
+编译运行DT.java文件
+1. Task1: 调用task1(trainRate)函数，参数为训练集的百分比
+2. Task2: 调用task2(trainRate, validationRate)函数，参数为训练集的百分比以及验证集的百分比
+3. Task3: 调用task3()函数
+

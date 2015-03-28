@@ -330,7 +330,7 @@ public class ID3 {
 		// }
 
 		newSplitPoint[index] = splitPoint;
-		System.out.println("splitPoint: " + splitPoint);
+		// System.out.println("splitPoint: " + splitPoint);
 		//由属性index划分后的熵
 		return infoD - min_info;
 	}
@@ -339,15 +339,19 @@ public class ID3 {
 		ArrayList<String> attrvals = attributeValues.get(attr);
 		int counts[] = new int[attrvals.size()];
 		int size = subset.size();
+		int missDataSize = 0;
 		for (int i : subset) {
 			String val = traindata.get(i)[attr];
 			if (val.compareTo("?") == 0) {
-				size --;
+				missDataSize ++;
 				continue;
 			}
 			int index = attrvals.indexOf(val);
 			counts[index] ++;
 		}
+		// 将缺失数据取为最可能的属性
+		int mostCommon = getMostCommonIdx(counts);
+		counts[mostCommon] += missDataSize;
 
 		double info = 0.0;
 		for (int count : counts) {            
@@ -366,13 +370,22 @@ public class ID3 {
 	double splitInfoContinuous(HashSet<Integer> subset, int attr, double split) {
 		ArrayList<String> attrvals = attributeValues.get(attr);
 		int counts[] = new int[2];
+		int missDataSize = 0;
 		for (int i : subset) {
-			Double val = Double.parseDouble(traindata.get(i)[attr]);
+			String valstr = traindata.get(i)[attr];
+			if (valstr.compareTo("?") == 0) {
+				missDataSize ++;
+				continue;
+			}
+			Double val = Double.parseDouble(valstr);
 			if (val < split)
 				counts[0] ++;
 			else
 				counts[1] ++;
 		}
+		// 将缺失数据取为最可能的属性
+		int mostCommon = getMostCommonIdx(counts);
+		counts[mostCommon] += missDataSize;
 
 		double info = 0.0;
 		for (int count : counts) {            
@@ -387,23 +400,47 @@ public class ID3 {
 		return info;
 	}
 
+	private int getMostCommonIdx(int[] count) {
+		int max = count[0];
+		int index = 0;
+		for (int i = 1; i < count.length; i++) {
+			if (max < count[i]) {
+				index = i;
+				max = count[i];
+			}
+		}
+		return index;
+	}
+
 	//计算信息增益
 	public double calDiscreteInfoGain(HashSet<Integer> subset, int index) {
-		//整体的熵
+		// 整体的熵
 		double infoD = calEntropy(classCount(subset));
-		//由属性index划分后的熵
+		// 统计划分后的取值情况
 		ArrayList<String> classattrval = attributeValues.get(classAttributeIdx);
 		ArrayList<String> attrval = attributeValues.get(index);
 		int[][] info = new int[attrval.size()][classattrval.size()];
 		int[] count = new int[attrval.size()];
+		int[] missData = new int[attrval.size()];
 		for (int i : subset) {
-			int attrvalIndex;
-			if (traindata.get(i)[index].compareTo("?") == 0) continue;
-			attrvalIndex = attrval.indexOf(traindata.get(i)[index]);
 			int classattrvalIndex = classattrval.indexOf(traindata.get(i)[classAttributeIdx]);
+			if (traindata.get(i)[index].compareTo("?") == 0) {
+				missData[classattrvalIndex] ++;
+				continue;
+			}
+			int attrvalIndex;
+			attrvalIndex = attrval.indexOf(traindata.get(i)[index]);
 			info[attrvalIndex][classattrvalIndex]++;
 			count[attrvalIndex]++;
 		}
+		// 将缺失数据取值为最可能的属性值
+		int mostCommon = getMostCommonIdx(count);
+		for (int  i : missData)
+			count[mostCommon] += i;
+		for (int i = 0; i < classattrval.size(); i++) {
+			info[mostCommon][i] += missData[i];
+		}
+		// 计算由属性index划分后的熵
 		int sum = subset.size();
 		double infoDA = 0.0;
 		for (int i = 0; i < attrval.size(); i++) {
@@ -457,17 +494,17 @@ public class ID3 {
 		treeRoot.pDecomposeValue = "";
 	}
 
-	private String classifyOneRecord(String[] record, BufferedWriter out) throws IOException{
-		String debug = "---------------------------\n";
-		for (String str : record)
-			debug += (str + ", ");
-		debug += "\n";
+	private String classifyOneRecord(String[] record) throws IOException{
+		// String debug = "---------------------------\n";
+		// for (String str : record)
+		// 	debug += (str + ", ");
+		// debug += "\n";
 		TreeNode node = treeRoot;
 		while (!node.leaf) {
 			int attr = node.decomposeAttribute;
-			debug += attributes.get(attr);
+			// debug += attributes.get(attr);
 			if (record[attr].compareTo("?") == 0) {
-				debug += ( "--( ? )-->");
+				// debug += ( "--( ? )-->");
 				break;
 			}
 			TreeNode child;
@@ -477,30 +514,30 @@ public class ID3 {
 				boolean match1 = child.type == CompareType.EQ && cmp == 0;
 				boolean match2 = child.type == CompareType.GE && cmp >= 0;
 				boolean match3 = child.type == CompareType.LT && cmp < 0;
-				String sym = "";
-				if (match2) {
-					sym = record[attr] + " >= ";
-				}
-				if (match3) {
-					sym = record[attr] + " < ";
-				}
+				// String sym = "";
+				// if (match2) {
+				// 	sym = record[attr] + " >= ";
+				// }
+				// if (match3) {
+				// 	sym = record[attr] + " < ";
+				// }
 				if (match1 || match2 || match3) {
-					debug += ( "--(" + sym + child.pDecomposeValue + ")-->");
+					// debug += ( "--(" + sym + child.pDecomposeValue + ")-->");
 					node = child;
 					break;
 				}
 			}
 		}
-		debug += " " + node.classLabel;
-		out.write(debug);
-		out.newLine();
+		// debug += " " + node.classLabel;
+		// out.write(debug);
+		// out.newLine();
 		return node.classLabel;
 	}
 
 	public double test(BufferedWriter out) throws IOException{
 		int correct = 0;
 		for (String[] test : testdata) {
-			String predict = classifyOneRecord(test, out);
+			String predict = classifyOneRecord(test);
 			String real = test[classAttributeIdx];
 			out.write("p: " + predict + ", r: " + real);
 			out.newLine();
@@ -617,12 +654,12 @@ public class ID3 {
 		}
 
 		//计算各属性的信息增益，并从中选择信息增益率最大的属性作为分类属性
-		System.out.println("Calculating max gainRate...");
+		// System.out.println("Calculating max gainRate...");
 		int maxIndex = -1;
 		double maxGainRate = -1.0;
 		for (int i : selattr) {
 			double gain, splitInfo, gainRate;
-			System.out.println("----- " + attributes.get(i) + " ------");
+			// System.out.println("----- " + attributes.get(i) + " ------");
 			if (attributeTypes.get(i) == AttributeType.CONTINUOUS) {
 				gain = calContinuousInfoGain(subset, i);
 				splitInfo = splitInfoContinuous(subset, i, newSplitPoint[i]);
@@ -632,7 +669,7 @@ public class ID3 {
 				splitInfo = splitInfoDiscrete(subset, i);
 			}
 			gainRate = gain / splitInfo;
-			System.out.println("gainRate: " + gainRate);
+			// System.out.println("gainRate: " + gainRate);
 			if (gainRate > maxGainRate) {
 				maxIndex = i;
 				maxGainRate = gainRate;
@@ -640,10 +677,11 @@ public class ID3 {
 		}
 
 		//划分
-		System.out.println("Choose \"" + attributes.get(maxIndex)
-						  + "\" to decompose");
+		// System.out.println("Choose \"" + attributes.get(maxIndex)
+						  // + "\" to decompose");
 		node.decomposeAttribute = maxIndex;
 		selattr.remove(new Integer(maxIndex));
+		HashSet<Integer> unknownSet = new HashSet<Integer>();
 		if (attributeTypes.get(maxIndex) == AttributeType.CONTINUOUS) {
 			treeSize += 2;
 			double splitPoint = newSplitPoint[maxIndex];
@@ -651,12 +689,20 @@ public class ID3 {
 			HashSet<Integer> upperSubset = new HashSet<Integer>();
 			for (int j : subset) {
 				int cmp = compareTo(splitPoint + "", maxIndex, traindata.get(j));
-				if (cmp == UNKNOWN) continue;
+				if (cmp == UNKNOWN) {
+					unknownSet.add(j);
+					continue;
+				}
 				if (cmp >= 0)
 					upperSubset.add(j);
 				else
 					lowerSubset.add(j);
 			}
+			// 将缺失属性的样本加入到多数的一边
+			if (upperSubset.size() > lowerSubset.size())
+				upperSubset.addAll(unknownSet);
+			else
+				lowerSubset.addAll(unknownSet);
 
 			TreeNode lowerChild;
 			if (lowerSubset.size() != 0)
@@ -745,41 +791,128 @@ public class ID3 {
 
 	}
 
-	public static void main(String[] args) {
+	public void blackboxTest(BufferedWriter out) throws IOException {
+		for (String[] test : testdata) {
+			String predict = classifyOneRecord(test);
+			out.write(predict + ".");
+			out.newLine();
+		}
+	}
+
+	public void task3() {
+		readC45("./data/adult.names", "./data/adult.data", "./data/test.features");
+		int validationSetSize = (int)(0.4 * traindata.size());
+		validationSet = new HashSet<Integer>(validationSetSize);
+		trainSet = new HashSet<Integer>(traindata.size() - validationSetSize);
+		for (int i = 0; i < validationSetSize; i++)
+			validationSet.add(i);
+		for (int i = validationSetSize; i < traindata.size(); i++)
+			trainSet.add(i);
+		train();
+		pruning();
+		try {
+			BufferedWriter testout = new BufferedWriter(new FileWriter(new File("./2012011335.test.result")));       
+			blackboxTest(testout);
+			testout.close();
+		} catch(Exception e) {
+			System.out.println(e);
+		}
+		return;
+	}
+
+	public double task1(double trainRate) {
 		long startTime = System.currentTimeMillis();
-		ID3 id3 = new ID3();
 		// 读取C4.5格式数据文件
-		id3.readC45("./data/adult.names", "./data/adult.data", "./data/adult.test");
-		// id3.printData();
+		readC45("./data/adult.names", "./data/adult.data", "./data/adult.test");
+		// printData();
 		// 构建分类决策树
-		id3.generateTrainTestSet(0.5, 0.4);
-		id3.train();
+		generateTrainTestSet(trainRate, 0);
+		train();
 
 		try {
 			BufferedWriter treeout = new BufferedWriter(new FileWriter(new File("./tree")));       
-			id3.printTreeToFile(id3.treeRoot, "", treeout); 
+			printTreeToFile(treeRoot, "", treeout); 
 			treeout.close();
 		} catch(Exception e) {
 			System.out.println(e);
 		}
 		
 		long endTime = System.currentTimeMillis();
-		System.out.println("========= Tree built, size:" + id3.treeSize +
+		System.out.println("========= Tree built, size:" + treeSize +
 							" , running time: " + (endTime - startTime)/1000.0
 							 + "s =========");
 		
-		 System.out.println("pruning...");
-		 id3.pruning();
-		 System.out.println("========= Pruned size:" + id3.treeSize +" =========");
-		System.out.println("testing...");
+//		System.out.println("testing...");
+		double accuracy = 0.0;
 		try {
 			BufferedWriter testout = new BufferedWriter(new FileWriter(new File("./test")));       
-			double accuracy = id3.test(testout);
+			accuracy = test(testout);
 			System.out.println("accuracy : " + accuracy);
 			testout.close();
 		} catch(Exception e) {
 			System.out.println(e);
 		}
+		return accuracy;
+	}
+
+	public double task2(double trainRate, double validationRate) {
+		long startTime = System.currentTimeMillis();
+		// 读取C4.5格式数据文件
+		readC45("./data/adult.names", "./data/adult.data", "./data/adult.test");
+		// printData();
+		// 构建分类决策树
+		generateTrainTestSet(trainRate, validationRate);
+		train();
+
+		try {
+			BufferedWriter treeout = new BufferedWriter(new FileWriter(new File("./tree")));       
+			printTreeToFile(treeRoot, "", treeout); 
+			treeout.close();
+		} catch(Exception e) {
+			System.out.println(e);
+		}
+		
+		long endTime = System.currentTimeMillis();
+		System.out.println("========= Tree built, size:" + treeSize +
+							" , running time: " + (endTime - startTime)/1000.0
+							 + "s =========");
+		
+		System.out.println("pruning...");
+		pruning();
+		System.out.println("========= Pruned size:" + treeSize +" =========");
+		System.out.println("testing...");
+		double accuracy = 0.0;
+		try {
+			BufferedWriter testout = new BufferedWriter(new FileWriter(new File("./test")));       
+			accuracy = test(testout);
+			System.out.println("accuracy : " + accuracy);
+			testout.close();
+		} catch(Exception e) {
+			System.out.println(e);
+		}
+		return accuracy;
+	}
+
+	public static void main(String[] args) {
+		try {
+			PrintStream myout = new PrintStream(new FileOutputStream(new File("./log3")));       
+			System.setOut(myout);        
+			System.setErr(myout);
+		} catch (FileNotFoundException e) {
+			System.out.println(e);
+		}
+		for (int i = 10; i < 20; i++) {
+			double trainRate = i * 0.05;
+			double tmp = 0.0;
+			for (int j = 0; j < 5; j++) {
+				ID3 id3 = new ID3();
+				tmp += id3.task1(trainRate);				
+			}
+			System.out.println( "****** " + trainRate + ": " + tmp/5);
+		}
+		// id3.task2(0.05, 0.4);
+		// id3.task3();
+		
 		
 	}
 }
