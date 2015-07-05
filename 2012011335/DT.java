@@ -1,5 +1,3 @@
-package id3;
-
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -16,7 +14,7 @@ import java.util.regex.Matcher;
 import javax.jws.Oneway;
 import javax.naming.ldap.Rdn;
 
-public class ID3 {
+public class DT {
 	
 	private static final int UNKNOWN = Integer.MAX_VALUE;
 	private static final double zalpha2 = 1.150;  // p = 0.25 two-sided
@@ -451,24 +449,17 @@ public class ID3 {
 
 	private void generateTrainTestSet(double trainRate, double validationRate) {
 		// 选取train set
-		
 		int trainSetSize = (int)(trainRate * traindata.size());
 		trainSet = new HashSet<Integer>(trainSetSize);
 		Random rdm = new Random(System.currentTimeMillis());
-		if (trainRate < 1) {
-			for (int i = 0; i < trainSetSize; i++) {
-				Integer train = rdm.nextInt() % traindata.size();
+		for (int i = 0; i < trainSetSize; i++) {
+			Integer train = rdm.nextInt() % traindata.size();
+			if (train < 0) train += traindata.size();
+			while (trainSet.contains(train)) {
+				train = rdm.nextInt() % traindata.size();
 				if (train < 0) train += traindata.size();
-				while (trainSet.contains(train)) {
-					train = rdm.nextInt() % traindata.size();
-					if (train < 0) train += traindata.size();
-				}
-				trainSet.add(train);
 			}
-		} else {
-			for (int i = 0; i < traindata.size(); i++) {
-				trainSet.add(i);
-			}
+			trainSet.add(train);
 		}
 		// 在train set中选取validation set
 		if (validationRate <= 0) return;
@@ -684,8 +675,8 @@ public class ID3 {
 		}
 
 		//划分
-		 System.out.println("Choose \"" + attributes.get(maxIndex)
-						   + "\" to decompose");
+		// System.out.println("Choose \"" + attributes.get(maxIndex)
+						  // + "\" to decompose");
 		node.decomposeAttribute = maxIndex;
 		selattr.remove(new Integer(maxIndex));
 		HashSet<Integer> unknownSet = new HashSet<Integer>();
@@ -901,20 +892,10 @@ public class ID3 {
 	}
 
 	public static void main(String[] args) {
-		double error = 0.0;
-		int n = 0;
-		for (int i = 0; i < 5; i++) {
-			ID3 id3 = new ID3();
-			error += (1-id3.task2(1, 0.4));
-			n = id3.testdata.size();
-		}
-		error /= 5;
-		System.out.println();
-		System.out.println("average error rate = "+ error);
-		System.out.println("test data size = " + n);
-		System.out.println("C.I.: " + 1.96*Math.sqrt(error*(1-error)/n));
-//		id3.task2(0.05, 0.4);
-		// id3.task3();
+		DT decisionTree = new DT();
+		// decisionTree.task1(0.05);
+		decisionTree.task2(0.05, 0.4);
+		// decisionTree.task3();
 		
 		
 	}
